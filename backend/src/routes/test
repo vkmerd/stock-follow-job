@@ -1,0 +1,980 @@
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "106",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8694796233517",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "ULUSOY",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Ayakkabı",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "1000.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9359884419309"
+0|vega-backend  | }
+0|vega-backend  | Variant güncelleme hatası: Shopify REST hatası: 422 {"errors":{"base":["Cannot set name for an option value linked to a metafield"]}}
+0|vega-backend  | Variant oluşturma hatası: Shopify REST hatası: 422 {"errors":{"base":["The variant '37' already exists."]}}
+0|vega-backend  | {"level":30,"time":1785604217546,"pid":1863010,"hostname":"srv1688955","reqId":"req-70","req":{"method":"GET","url":"/api/siparisler?durum=beklemede&limit=1","host":"panel.vegacantastore.com","remoteAddress":"127.0.0.1","remotePort":41436},"msg":"incoming request"}
+0|vega-backend  | {"level":30,"time":1785604217560,"pid":1863010,"hostname":"srv1688955","reqId":"req-70","res":{"statusCode":200},"responseTime":13.891336441040039,"msg":"request completed"}
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Nas Bag Taba Çok Bölmeli ve Çift Kullanımlı Kadın Sırt ve Omuz Çantası - 1081",
+0|vega-backend  |   "descriptionHtml": "<h4 data-path-to-node=\"5\">\n<b data-index-in-node=\"0\" data-path-to-node=\"10,1,0\">Taba:</b> Sıcak ve zamansız. Deri şıklığını en iyi yansıtan taba rengi, günlük spor-şık kombinlerin vazgeçilmez tamamlayıcısıdır.</h4>\n<p data-path-to-node=\"13,0,0\"><b data-index-in-node=\"0\" data-path-to-node=\"13,0,0\">Şehirli &amp; Rahat (Sokak Stili):</b></p>\n<ul data-path-to-node=\"13,0,1\">\n<li>\n<p data-path-to-node=\"13,0,1,0,0\"><b data-index-in-node=\"0\" data-path-to-node=\"13,0,1,0,0\">Çanta:</b> <i data-index-in-node=\"7\" data-path-to-node=\"13,0,1,0,0\">Taba</i></p>\n</li>\n<li>\n<p data-path-to-node=\"13,0,1,1,0\"><b data-index-in-node=\"0\" data-path-to-node=\"13,0,1,1,0\">Kombin:</b> Beyaz oversize tişört, yüksek bel jean pantolon, taba tonlarında bir trençkot ve beyaz sneaker’lar ile sırt çantası formunda kullanarak enerjik bir hafta sonu stili yakalayın.</p>\n</li>\n</ul>",
+0|vega-backend  |   "vendor": "NAS BAG",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "nas-bag-taba-cok-bolmeli-ve-cift-kullanimli-kadin-sirt-ve-omuz-cantasi-1081",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "NAS BAG",
+0|vega-backend  |     "Çanta",
+0|vega-backend  |     "Sırt Çantası",
+0|vega-backend  |     "S-01026",
+0|vega-backend  |     "NAS1081",
+0|vega-backend  |     "8699967034894"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-01026",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "8ef1b9cd-ea79-4923-aa8c-3423dd370415",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "NAS1081",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8699967034894",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "NAS BAG",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Çanta",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alt_kategori",
+0|vega-backend  |       "value": "Sırt Çantası",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "960.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9458378375405"
+0|vega-backend  | }
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Vega Luxury Siyah Hakiki Deri Ortopedik Loafer Ayakkabı - rc-5",
+0|vega-backend  |   "descriptionHtml": "<p data-path-to-node=\"8\">Siyahın asaleti, süetin yumuşak dokusuyla buluştu. Bu renk, gardırobunuzun en güvenli ve en şık parçası olacak.</p>\n<ul data-path-to-node=\"9\">\n<li>\n<p data-path-to-node=\"9,0,0\"><b data-path-to-node=\"9,0,0\" data-index-in-node=\"0\">Stil Notu:</b> Beyaz dikiş detaylarıyla zenginleştirilen siyah süet, hem resmi iş kıyafetleriyle hem de jean pantolonlarla kusursuz bir kontrast oluşturur.</p>\n</li>\n<li>\n<p data-path-to-node=\"9,1,0\"><b data-path-to-node=\"9,1,0\" data-index-in-node=\"0\">Neden Seçmeli?</b> Kir göstermeyen yapısı ve her renkle uyumu sayesinde \"ne giyeceğim?\" dediğiniz anların kurtarıcısıdır.</p>\n</li>\n</ul>",
+0|vega-backend  |   "vendor": "ERSOY",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "vega-luxury-siyah-hakiki-deri-ortopedik-loafer-ayakkabi-rc-5",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "ERSOY",
+0|vega-backend  |     "Ayakkabı",
+0|vega-backend  |     "S-01188",
+0|vega-backend  |     "rc-5",
+0|vega-backend  |     "8693265290969"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-01188",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "d33a4a1f-085f-47a4-9983-e88fd39ee099",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "rc-5",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8693265290969",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "ERSOY",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Ayakkabı",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "1000.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9366947332333"
+0|vega-backend  | }
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Hakiki Deri Krem Ortopedik Kadın Ayakkabısı - 106",
+0|vega-backend  |   "descriptionHtml": "<p data-path-to-node=\"7\"><b data-path-to-node=\"7\" data-index-in-node=\"0\">Zarif, Yumuşak ve Sofistike Bir Dokunuş</b></p>\n<p data-path-to-node=\"8\">Krem tonlarının huzur veren zarafeti, hakiki derinin doğal yapısıyla birleşerek adımlarınıza hafiflik katıyor. Özellikle bahar ve yaz aylarının \"kurtarıcı\" rengi olarak stilinizi aydınlatır.</p>\n<ul data-path-to-node=\"9\">\n<li>\n<p data-path-to-node=\"9,0,0\"><b data-path-to-node=\"9,0,0\" data-index-in-node=\"0\">Karakter:</b> Yumuşak, modern ve sofistike bir tarzı temsil eden, göz yormayan bir şıklık.</p>\n</li>\n<li>\n<p data-path-to-node=\"9,1,0\"><b data-path-to-node=\"9,1,0\" data-index-in-node=\"0\">Kombin Avantajı:</b> Pastel tonlar, toprak renkleri ve denim parçalarla harika bir uyum yakalayarak kombininizi ferahlatır.</p>\n</li>\n<li>\n<p data-path-to-node=\"9,2,0\"><b data-path-to-node=\"9,2,0\" data-index-in-node=\"0\">Görsel Etki:</b> Ten rengine yakın tonu sayesinde bacak boyunu daha uzun ve zarif gösterme özelliğine sahiptir.</p>\n</li>\n<li>\n<p data-path-to-node=\"9,3,0\"><b data-path-to-node=\"9,3,0\" data-index-in-node=\"0\">Kullanım:</b> Günlük hayatta zahmetsiz bir şıklık arayanlar için hem doğal hem de lüks bir tercihtir.</p>\n</li>\n</ul>",
+0|vega-backend  |   "vendor": "ULUSOY",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "hakiki-deri-krem-ortopedik-kadin-ayakkabisi-106",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "ULUSOY",
+0|vega-backend  |     "Ayakkabı",
+0|vega-backend  |     "S-00618",
+0|vega-backend  |     "106",
+0|vega-backend  |     "8694793858768"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-00618",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "18a8b216-5bf3-4238-bb57-4390fa62f84f",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "106",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8694793858768",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "ULUSOY",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Ayakkabı",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "1000.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9359884812525"
+0|vega-backend  | }
+0|vega-backend  | Variant oluşturma hatası: Shopify REST hatası: 422 {"errors":{"product":["Cannot set name for an option value linked to a metafield"]}}
+0|vega-backend  | Video dosyası Shopify'a yüklenemedi: Video indirilemedi: 404
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Nas Bag Kadın Mini Omuz ve Çapraz Çanta - 1469",
+0|vega-backend  |   "descriptionHtml": "<p data-path-to-node=\"6\"><b data-path-to-node=\"6\" data-index-in-node=\"0\">Zarafet ve Fonksiyonellik Bir Arada: Örgü Kulp Detaylı Kadın Omuz Çantası</b></p>\n<p data-path-to-node=\"7\">Şehir hayatının koşturmacasında şıklığından ödün vermeden konforu hissetmek isteyen kadınlar için tasarlanan bu özel omuz çantası, göz alıcı detaylarıyla stilinizi tamamlıyor. Dokunduğunuz anda sizi saracak yumuşacık yapısı ve premium malzeme kalitesiyle hem günlük kombinlerinize hem de özel anlarınıza eşlik etmeye hazır.</p>\n<p data-path-to-node=\"8\">Çantanın en dikkat çekici özelliklerinden biri olan şık <b data-path-to-node=\"8\" data-index-in-node=\"56\">örgü kulp tasarımı</b>, ürüne hem modern hem de lüks bir hava katıyor. Geniş ana bölmesinin yanı sıra, eşyalarınızı düzenli tutmanızı sağlayacak fermuarlı iç gözleri ve çantanızın arkasında yer alan pratik fermuarlı cep alanı ile fonksiyonelliği zirveye taşıyor. Üstelik çanta ile birlikte gelen <b data-path-to-node=\"8\" data-index-in-node=\"348\">ekstra uzun düz askısı</b> sayesinde, ister omzunuzda zarif bir el çantası gibi, ister çapraz takarak spor-şık bir tarzda özgürce kullanabilirsiniz.</p>\n<h3 data-path-to-node=\"9\">📐 Ürün Özellikleri:</h3>\n<ul data-path-to-node=\"10\">\n<li>\n<p data-path-to-node=\"10,0,0\"><b data-path-to-node=\"10,0,0\" data-index-in-node=\"0\">Tasarım:</b> Kısa örgü kulp detaylı modern omuz ve el çantası tasarımı.</p>\n</li>\n<li>\n<p data-path-to-node=\"10,1,0\"><b data-path-to-node=\"10,1,0\" data-index-in-node=\"0\">Malzeme Yapısı:</b> İki farklı deri dokusu seçeneği (Pürüzsüz mat Victoria dokusu ve hafif desenli Lopez dokusu).</p>\n</li>\n<li>\n<p data-path-to-node=\"10,2,0\"><b data-path-to-node=\"10,2,0\" data-index-in-node=\"0\">İç Hacim:</b> Tek gözlü geniş ana bölme ve düzen sağlayıcı iç fermuarlı cepler.</p>\n</li>\n<li>\n<p data-path-to-node=\"10,3,0\"><b data-path-to-node=\"10,3,0\" data-index-in-node=\"0\">Dış Detaylar:</b> Çantanın arkasında kolay erişim sunan fermuarlı cep alanı ve gold renkli şık metal aksesuarlar.</p>\n</li>\n<li>\n<p data-path-to-node=\"10,4,0\"><b data-path-to-node=\"10,4,0\" data-index-in-node=\"0\">Çift Askı Avantajı:</b> Hem şık kısa örgü kulbu hem de çapraz kullanım için ayarlanabilir uzun düz askısı mevcuttur (Uzun askı modeli örgü detaylı değildir).</p>\n</li>\n</ul>",
+0|vega-backend  |   "vendor": "NAS BAG",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "nas-bag-kadin-mini-omuz-ve-capraz-canta-1469",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "NAS BAG",
+0|vega-backend  |     "Çanta",
+0|vega-backend  |     "Omuz Çantası",
+0|vega-backend  |     "S-00690",
+0|vega-backend  |     "1469",
+0|vega-backend  |     "8693814232976"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-00690",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "fc477d89-a149-4697-ba33-7b25ff701bdf",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "1469",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8693814232976",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "NAS BAG",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Çanta",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alt_kategori",
+0|vega-backend  |       "value": "Omuz Çantası",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "600.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "-1",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9376337264877"
+0|vega-backend  | }
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Vega Luxury Kum Çift Tokalı Hakiki Deri Babet - 102",
+0|vega-backend  |   "descriptionHtml": "<p data-path-to-node=\"4\"><b data-path-to-node=\"4\" data-index-in-node=\"0\">Ürün Özellikleri:</b></p>\n<ul data-path-to-node=\"5\">\n<li>\n<p data-path-to-node=\"5,0,0\"><b data-path-to-node=\"5,0,0\" data-index-in-node=\"0\">Malzeme:</b> İçi de dışı da %100 Hakiki Deri kalitesiyle üretilmiştir.</p>\n</li>\n<li>\n<p data-path-to-node=\"5,1,0\"><b data-path-to-node=\"5,1,0\" data-index-in-node=\"0\">Tasarım:</b> Ayakta çok zarif duran çift tokalı (kemerli) modern Mary Jane tasarımı.</p>\n</li>\n<li>\n<p data-path-to-node=\"5,2,0\"><b data-path-to-node=\"5,2,0\" data-index-in-node=\"0\">Taban Yapısı:</b> Tamamen yerle birleşik olmayan, konforlu hafif yüksek taban.</p>\n</li>\n<li>\n<p data-path-to-node=\"5,3,0\"><b data-path-to-node=\"5,3,0\" data-index-in-node=\"0\">Numara Seçenekleri:</b> 36'dan 40'a kadar tüm numaraları mevcuttur.</p>\n</li>\n</ul>",
+0|vega-backend  |   "vendor": "ERCAN",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "vega-luxury-kum-cift-tokali-hakiki-deri-babet-102",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "ERCAN",
+0|vega-backend  |     "Ayakkabı",
+0|vega-backend  |     "S-00643",
+0|vega-backend  |     "102",
+0|vega-backend  |     "8695651529578"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-00643",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "1b409bb0-d322-4720-87a2-3e2a0b6efa12",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "102",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8695651529578",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "ERCAN",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Ayakkabı",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "1000.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9443371581677"
+0|vega-backend  | }
+0|vega-backend  | {"level":30,"time":1785604239854,"pid":1863010,"hostname":"srv1688955","reqId":"req-71","req":{"method":"GET","url":"/api/siparisler?durum=beklemede&limit=1","host":"panel.vegacantastore.com","remoteAddress":"127.0.0.1","remotePort":54900},"msg":"incoming request"}
+0|vega-backend  | {"level":30,"time":1785604239867,"pid":1863010,"hostname":"srv1688955","reqId":"req-71","res":{"statusCode":200},"responseTime":13.4991455078125,"msg":"request completed"}
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "NASBAG Yeşil Bono Çok Bölmeli ve Geniş Askılı Kadın El ve Çapraz Omuz Çantası - 1444",
+0|vega-backend  |   "descriptionHtml": "<p data-path-to-node=\"7\">Koleksiyonun en \"stil sahibi\" parçalarından biri olan haki yeşil, doğanın huzurunu modern şehir hayatının dinamizmiyle birleştiriyor. Özellikle bej, ekru ve taba tonlarındaki kıyafetlerinizle birleştiğinde ortaya sofistike bir \"kontrast\" çıkarır. Yumuşak büzgü yapısını en iyi vurgulayan bu renk, hem spor şıklık arayan genç ruhlara hem de tarzına karakter katmak isteyen her yaşa hitap eder. Özellikle outdoor aktivitelerinde veya hafta sonu gezilerinde, geniş logolu askısıyla harika bir uyum sergiler.</p>\n<h3 data-path-to-node=\"8\"><br></h3>",
+0|vega-backend  |   "vendor": "NAS BAG",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "nasbag-yesil-bono-cok-bolmeli-ve-genis-askili-kadin-el-ve-capraz-omuz-cantasi-1444",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "NAS BAG",
+0|vega-backend  |     "Çanta",
+0|vega-backend  |     "Omuz Çantası",
+0|vega-backend  |     "S-00979",
+0|vega-backend  |     "1444",
+0|vega-backend  |     "8699073986896"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-00979",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "b96ad682-2a98-41c3-a481-5589450006ee",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "1444",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8699073986896",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "NAS BAG",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Çanta",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alt_kategori",
+0|vega-backend  |       "value": "Omuz Çantası",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "800.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9341716660461"
+0|vega-backend  | }
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Nas Bag Acı Kahve Ayarlanabilir Askılı Yumuşak Deri Kadın Hobo Omuz Çantası - 1525",
+0|vega-backend  |   "descriptionHtml": "<p><span data-path-to-node=\"17,5,0,0\"><b data-path-to-node=\"17,5,0,0\" data-index-in-node=\"0\">Acı Kahve </b></span><span data-path-to-node=\"17,5,1,0\"><b data-path-to-node=\"17,5,1,0\" data-index-in-node=\"0\">Sıcak &amp; Zengin</b></span></p>\n<p><span data-path-to-node=\"17,5,1,0\">       Bej trençkotlar, taba tonlarında kabanlar veya sütlü kahve trikolarla harika bir kış/sonbahar şıklığı oluşturur.</span></p>",
+0|vega-backend  |   "vendor": "NAS BAG",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "nas-bag-aci-kahve-ayarlanabilir-askili-yumusak-deri-kadin-hobo-omuz-cantasi-1525",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "NAS BAG",
+0|vega-backend  |     "Çanta",
+0|vega-backend  |     "Omuz Çantası",
+0|vega-backend  |     "S-00637",
+0|vega-backend  |     "1525",
+0|vega-backend  |     "8695639565161"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-00637",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "fe9e6c18-8017-4f2b-8f03-7fa1e6bb7815",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "1525",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8695639565161",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "NAS BAG",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Çanta",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alt_kategori",
+0|vega-backend  |       "value": "Omuz Çantası",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "800.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9443318563053"
+0|vega-backend  | }
+0|vega-backend  | Video dosyası Shopify'a yüklenemedi: Your plan does not permit more than 250 videos and 3D models. To add more, upgrade your plan.
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "ÇÇS Zincir ve Deri Askılı Dikdörtgen El ve Omuz Çantası - 17575",
+0|vega-backend  |   "descriptionHtml": "<p data-path-to-node=\"6\">Her ortamda bakışları üzerinize çekecek, hem şık hem de fonksiyonel bir çanta arıyorsanız bu model tam size göre! Göz alıcı modern tasarımı ve net hatlarıyla öne çıkan bu çanta, stilinize dinamik bir hava katacak.</p>\n<p data-path-to-node=\"7\"><b data-path-to-node=\"7\" data-index-in-node=\"0\">Öne Çıkan Özellikler:</b></p>\n<ul data-path-to-node=\"8\">\n<li>\n<p data-path-to-node=\"8,0,0\"><b data-path-to-node=\"8,0,0\" data-index-in-node=\"0\">Çift Askı Alternatifi:</b> Çantanın tasarımına zarafet katan şık <b data-path-to-node=\"8,0,0\" data-index-in-node=\"61\">zincir askısının</b> yanı sıra, daha günlük ve konforlu bir kullanım sunan ayarlanabilir <b data-path-to-node=\"8,0,0\" data-index-in-node=\"146\">deri askısı</b> mevcuttur. Dilediğiniz an askıyı tarzınıza göre değiştirebilirsiniz.</p>\n</li>\n<li>\n<p data-path-to-node=\"8,1,0\"><b data-path-to-node=\"8,1,0\" data-index-in-node=\"0\">Fonksiyonel İç Tasarım:</b> Çantanın içi geniş bir <b data-path-to-node=\"8,1,0\" data-index-in-node=\"47\">tek ana gözden</b> oluşmaktadır. Ayrıca iç kısmında kartlarınızı veya küçük eşyalarınızı düzenli tutmanızı sağlayacak pratik bir <b data-path-to-node=\"8,1,0\" data-index-in-node=\"172\">ara bölme/cep</b> yer alır.</p>\n</li>\n<li>\n<p data-path-to-node=\"8,2,0\"><b data-path-to-node=\"8,2,0\" data-index-in-node=\"0\">Çok Yönlü Kullanım:</b> İster düğün, davet gibi şık organizasyonlarda, isterseniz de arkadaşlarınızla kahve içmeye giderken günlük kombinlerinizle rahatça eşleştirebilirsiniz. Her ortama mükemmel uyum sağlar.</p>\n</li>\n</ul>",
+0|vega-backend  |   "vendor": "ÇÇS",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "ccs-zincir-ve-deri-askili-dikdortgen-el-ve-omuz-cantasi-17575",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "ÇÇS",
+0|vega-backend  |     "Çanta",
+0|vega-backend  |     "Omuz Çantası",
+0|vega-backend  |     "S-00896",
+0|vega-backend  |     "17575",
+0|vega-backend  |     "8698221066169"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-00896",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "dd9d83c8-9a56-4e54-8b13-4d43fb0cea3a",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "17575",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8698221066169",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "ÇÇS",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Çanta",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alt_kategori",
+0|vega-backend  |       "value": "Omuz Çantası",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "1000.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "-1",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9414064799981"
+0|vega-backend  | }
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Silver Polo Pembe Çok Bölmeli El ve Omuz Çantası - SP1271",
+0|vega-backend  |   "descriptionHtml": "<h3> Pembe (Düz Kumaş)</h3>\n<ul>\n<li>\n<p><b>Açıklama:</b> Tatlı ve feminen tonuyla kombinlere enerjik bir dokunuş katan pembe çanta, pastel severlerin vazgeçilmezi olmaya aday. Doku detayları ve gri/gümüş aksesuarlarıyla oldukça romantik bir tasarımdır.</p>\n</li>\n<li>\n<p><b>Kombin Önerisi:</b> Beyaz elbise, açık gri cardigan veya toz pembe/denim kombinlerle bahar havasını stilinize taşıyabilirsiniz.</p>\n</li>\n</ul>",
+0|vega-backend  |   "vendor": "S.POLO",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "silver-polo-pembe-cok-bolmeli-el-ve-omuz-cantasi-sp1271",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "S.POLO",
+0|vega-backend  |     "Çanta",
+0|vega-backend  |     "El Çantası",
+0|vega-backend  |     "S-01315",
+0|vega-backend  |     "SP1271",
+0|vega-backend  |     "8695198171230"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-01315",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "9282b8b5-2b89-4818-8cb5-9fff1605141f",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "SP1271",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8695198171230",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "S.POLO",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Çanta",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alt_kategori",
+0|vega-backend  |       "value": "El Çantası",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "923.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9475901063405"
+0|vega-backend  | }
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Nas Bag Siyah Ayarlanabilir Askılı Yumuşak Deri Kadın Hobo Omuz Çantası - 1525",
+0|vega-backend  |   "descriptionHtml": "<p><span data-path-to-node=\"17,6,0,0\"><b data-path-to-node=\"17,6,0,0\" data-index-in-node=\"0\">Siyah </b></span><span data-path-to-node=\"17,6,1,0\"><b data-path-to-node=\"17,6,1,0\" data-index-in-node=\"0\">Zamansız &amp; Kurtarıcı</b></span></p>\n<p><span data-path-to-node=\"17,6,1,0\">    İş hayatından sokak stiline kadar her şeye uyar. Deri ceketler, siyah takım elbiseler veya renkli kombinleri dengelemek için birebirdir.</span></p>",
+0|vega-backend  |   "vendor": "NAS BAG",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "nas-bag-siyah-ayarlanabilir-askili-yumusak-deri-kadin-hobo-omuz-cantasi-1525",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "NAS BAG",
+0|vega-backend  |     "Çanta",
+0|vega-backend  |     "Omuz Çantası",
+0|vega-backend  |     "S-00636",
+0|vega-backend  |     "1525",
+0|vega-backend  |     "8695639120155"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-00636",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "f046f1d2-587a-449a-9e35-18fa593d59bc",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "1525",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8695639120155",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "NAS BAG",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Çanta",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alt_kategori",
+0|vega-backend  |       "value": "Omuz Çantası",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "800.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9443321413869"
+0|vega-backend  | }
+0|vega-backend  | {"level":30,"time":1785604259680,"pid":1863010,"hostname":"srv1688955","reqId":"req-72","req":{"method":"GET","url":"/api/siparisler?durum=beklemede&limit=1","host":"panel.vegacantastore.com","remoteAddress":"127.0.0.1","remotePort":48720},"msg":"incoming request"}
+0|vega-backend  | {"level":30,"time":1785604259698,"pid":1863010,"hostname":"srv1688955","reqId":"req-72","res":{"statusCode":200},"responseTime":17.5969181060791,"msg":"request completed"}
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Nas Bag Beyaz Ayarlanabilir Askılı Yumuşak Deri Kadın Hobo Omuz Çantası - 1525",
+0|vega-backend  |   "descriptionHtml": "<p><span data-path-to-node=\"17,4,0,0\"><b data-path-to-node=\"17,4,0,0\" data-index-in-node=\"0\">Beyaz  </b></span><span data-path-to-node=\"17,4,1,0\"><b data-path-to-node=\"17,4,1,0\" data-index-in-node=\"0\">Modern &amp; Minimal</b></span></p>\n<p><span data-path-to-node=\"17,4,1,0\">  Monokrom (siyah-beyaz) kombinlerin yıldızıdır. Oversize blazer ceketler ve açık renk Jean'lerle spor-şık bir tarz sunar.</span></p>",
+0|vega-backend  |   "vendor": "NAS BAG",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "nas-bag-beyaz-ayarlanabilir-askili-yumusak-deri-kadin-hobo-omuz-cantasi-1525",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "NAS BAG",
+0|vega-backend  |     "Çanta",
+0|vega-backend  |     "Omuz Çantası",
+0|vega-backend  |     "S-00638",
+0|vega-backend  |     "1525",
+0|vega-backend  |     "8695639980308"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-00638",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "b0f8fa10-819b-4809-ae3c-26246ea25571",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "1525",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8695639980308",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "NAS BAG",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Çanta",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alt_kategori",
+0|vega-backend  |       "value": "Omuz Çantası",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "800.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9443316564205"
+0|vega-backend  | }
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Nas Bag Haki Taba Detaylı Ayarlanabilir Askılı Yumuşak Deri Kadın Hobo Omuz Çantası - 1525",
+0|vega-backend  |   "descriptionHtml": "<p><span data-path-to-node=\"17,2,0,0\"><b data-index-in-node=\"0\" data-path-to-node=\"17,2,0,0\">Haki / Taba Detaylı </b></span><span data-path-to-node=\"17,2,1,0\"><b data-index-in-node=\"0\" data-path-to-node=\"17,2,1,0\">Doğal &amp; Pop</b></span></p>\n<p><span data-path-to-node=\"17,2,1,0\">    Toprak tonları, krem trikolar veya denim (kot) ceketlerle harika bir uyum sağlar. Kahverengi çizmelerle sonbahar havası yaratabilirsiniz.</span></p>",
+0|vega-backend  |   "vendor": "NAS BAG",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "nas-bag-haki-taba-detayli-ayarlanabilir-askili-yumusak-deri-kadin-hobo-omuz-cantasi-1525",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "NAS BAG",
+0|vega-backend  |     "Çanta",
+0|vega-backend  |     "Omuz Çantası",
+0|vega-backend  |     "S-00640",
+0|vega-backend  |     "1525",
+0|vega-backend  |     "8695641088559"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-00640",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "1e628d1f-5a87-4b3d-bd08-b7c7567bb1d9",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "1525",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8695641088559",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "NAS BAG",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Çanta",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alt_kategori",
+0|vega-backend  |       "value": "Omuz Çantası",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "800.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "0",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9443303981293"
+0|vega-backend  | }
+0|vega-backend  | {"level":30,"time":1785604267530,"pid":1863010,"hostname":"srv1688955","reqId":"req-73","req":{"method":"GET","url":"/api/siparisler?durum=beklemede&limit=1","host":"panel.vegacantastore.com","remoteAddress":"127.0.0.1","remotePort":57470},"msg":"incoming request"}
+0|vega-backend  | {"level":30,"time":1785604267538,"pid":1863010,"hostname":"srv1688955","reqId":"req-73","res":{"statusCode":200},"responseTime":7.454334259033203,"msg":"request completed"}
+0|vega-backend  | Video dosyası Shopify'a yüklenemedi: Video indirilemedi: 404
+0|vega-backend  | Shopify updateProduct input: {
+0|vega-backend  |   "title": "Nas Bag Laptop Çantası - 1412",
+0|vega-backend  |   "descriptionHtml": "<p>Sıkıcı laptop çantalarını geride bırakma zamanı! Hem stilinizi tamamlayacak hem de bilgisayarınızı güvenle taşıyacak yeni modelimizi keşfedin. Geniş hacmi, fermuarlı bölmeleri ve 4 farklı renk seçeneğiyle (Kum Beji, Vizon, Lacivert, Siyah) günlük kombinlerinizin favorisi olmaya aday. Sipariş ve bilgi için web sitemizi ziyaret edebilir veya bize DM üzerinden ulaşabilirsiniz. 💼</p>",
+0|vega-backend  |   "vendor": "Vega Çanta Store",
+0|vega-backend  |   "productType": "",
+0|vega-backend  |   "handle": "nas-bag-laptop-cantasi-1412",
+0|vega-backend  |   "status": "ACTIVE",
+0|vega-backend  |   "tags": [
+0|vega-backend  |     "Vega Çanta Store",
+0|vega-backend  |     "Çanta",
+0|vega-backend  |     "El Çantası",
+0|vega-backend  |     "S-00660",
+0|vega-backend  |     "1412",
+0|vega-backend  |     "8695682600673"
+0|vega-backend  |   ],
+0|vega-backend  |   "metafields": [
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_kod",
+0|vega-backend  |       "value": "S-00660",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "local_id",
+0|vega-backend  |       "value": "d817f591-fb2a-4f6a-aec0-00c9f85c2838",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_sku",
+0|vega-backend  |       "value": "1412",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "urun_barkod",
+0|vega-backend  |       "value": "8695682600673",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "marka",
+0|vega-backend  |       "value": "Vega Çanta Store",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kategori",
+0|vega-backend  |       "value": "Çanta",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alt_kategori",
+0|vega-backend  |       "value": "El Çantası",
+0|vega-backend  |       "type": "single_line_text_field"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "alis_fiyat",
+0|vega-backend  |       "value": "810.00",
+0|vega-backend  |       "type": "number_decimal"
+0|vega-backend  |     },
+0|vega-backend  |     {
+0|vega-backend  |       "namespace": "vega",
+0|vega-backend  |       "key": "kritik_stok",
+0|vega-backend  |       "value": "-1",
+0|vega-backend  |       "type": "number_integer"
+0|vega-backend  |     }
+0|vega-backend  |   ],
+0|vega-backend  |   "id": "gid://shopify/Product/9442005942509"
+0|vega-backend  | }

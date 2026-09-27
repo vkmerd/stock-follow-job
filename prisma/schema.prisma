@@ -1,0 +1,524 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Magaza {
+  id              String         @id @default(uuid())
+  ad              String
+  kod             String         @unique
+  adres           String?
+  telefon         String?
+  email           String?
+  tip             String         @default("fiziksel")
+  ikon            String         @default("🏪")
+  renk            String         @default("#c9b882")
+  aktif           Boolean        @default(true)
+  olusturuldu     DateTime       @default(now())
+  bankaHareketler BankaHareket[]
+  bankaHesaplar   BankaHesap[]
+  degisimler      Degisim[]
+  gunlukKasalar   GunlukKasa[]
+  kullanicilar    Kullanici[]
+  masraflar       Masraf[]
+  posTerminal     PosTerminal[]
+  satislar        Satis[]
+  siparisler      Siparis[]
+  stokHareket     StokHareket[]
+  varyantlar      Varyant[]
+
+  @@map("magazalar")
+}
+
+model Kullanici {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  sifre       String
+  ad          String
+  soyad       String?
+  rol         String    @default("kasiyer")
+  magazaId    String?
+  aktif       Boolean   @default(true)
+  sonGiris    DateTime?
+  olusturuldu DateTime  @default(now())
+  guncellendi DateTime  @updatedAt
+  magaza      Magaza?   @relation(fields: [magazaId], references: [id])
+  satislar    Satis[]
+  siparisler  Siparis[]
+
+  @@map("kullanicilar")
+}
+
+model Ayar {
+  id          String   @id @default(uuid())
+  anahtar     String   @unique
+  deger       String
+  tip         String   @default("text")
+  aciklama    String?
+  guncellendi DateTime @updatedAt
+
+  @@map("ayarlar")
+}
+
+model Kategori {
+  id          String     @id @default(uuid())
+  ad          String
+  ustId       String?
+  aktif       Boolean    @default(true)
+  sira        Int        @default(0)
+  ustKategori Kategori?  @relation("AltKategoriler", fields: [ustId], references: [id])
+  altlar      Kategori[] @relation("AltKategoriler")
+
+  @@map("kategoriler")
+}
+
+model Marka {
+  id          String   @id @default(uuid())
+  ad          String   @unique
+  aktif       Boolean  @default(true)
+  olusturuldu DateTime @default(now())
+
+  @@map("markalar")
+}
+
+model Urun {
+  id          String         @id @default(uuid())
+  kod         String         @unique
+  barkod      String?        @unique
+  ad          String
+  marka       String?
+  kategori    String?
+  altKategori String?
+  alisF       Decimal        @default(0) @db.Decimal(12, 2)
+  satisF      Decimal        @default(0) @db.Decimal(12, 2)
+  kdv         Int            @default(18)
+  aciklama    String?
+  kritikStok  Int            @default(3)
+  aktif       Boolean        @default(true)
+  olusturuldu DateTime       @default(now())
+  guncellendi DateTime       @updatedAt
+  iadeKalem   IadeKalem[]
+  satisKalem  SatisKalem[]
+  sipKalem    SiparisKalem[]
+  stokHareket StokHareket[]
+  varyantlar  Varyant[]
+
+  @@map("urunler")
+}
+
+model Varyant {
+  id          String   @id @default(uuid())
+  urunId      String
+  magazaId    String
+  renk        String?
+  beden       String?
+  adet        Int      @default(0)
+  barkod      String?
+  olusturuldu DateTime @default(now())
+  magaza      Magaza   @relation(fields: [magazaId], references: [id])
+  urun        Urun     @relation(fields: [urunId], references: [id], onDelete: Cascade)
+
+  @@unique([urunId, magazaId, renk, beden])
+  @@map("varyantlar")
+}
+
+model StokHareket {
+  id         String   @id @default(uuid())
+  urunId     String
+  magazaId   String?
+  tip        String
+  renk       String?
+  beden      String?
+  adet       Int
+  birimFiyat Decimal  @default(0) @db.Decimal(12, 2)
+  notlar     String?
+  referansId String?
+  tarih      DateTime @default(now())
+  magaza     Magaza?  @relation(fields: [magazaId], references: [id])
+  urun       Urun     @relation(fields: [urunId], references: [id])
+
+  @@map("stok_hareketler")
+}
+
+model PosTerminal {
+  id            String       @id @default(uuid())
+  ad            String
+  banka         String
+  terminalNo    String?
+  magazaId      String
+  komisyonPesin Decimal      @default(1.49) @db.Decimal(5, 2)
+  komisyon2     Decimal      @default(1.79) @db.Decimal(5, 2)
+  komisyon3     Decimal      @default(1.99) @db.Decimal(5, 2)
+  komisyon6     Decimal      @default(2.49) @db.Decimal(5, 2)
+  komisyon9     Decimal      @default(2.99) @db.Decimal(5, 2)
+  komisyon12    Decimal      @default(3.49) @db.Decimal(5, 2)
+  aktif         Boolean      @default(true)
+  olusturuldu   DateTime     @default(now())
+  iadeOdeme     IadeOdeme[]
+  magaza        Magaza       @relation(fields: [magazaId], references: [id])
+  satisOdeme    SatisOdeme[]
+
+  @@map("pos_terminaller")
+}
+
+model Satis {
+  id                String       @id @default(uuid())
+  fisNo             String       @unique
+  magazaId          String
+  kullaniciId       String?
+  musteriId         String?
+  notlar            String?
+  araToplam         Decimal      @default(0) @db.Decimal(12, 2)
+  genelIndirimOran  Decimal      @default(0) @db.Decimal(5, 2)
+  genelIndirimTutar Decimal      @default(0) @db.Decimal(12, 2)
+  kdvToplam         Decimal      @default(0) @db.Decimal(12, 2)
+  genelToplam       Decimal      @default(0) @db.Decimal(12, 2)
+  paraUstu          Decimal      @default(0) @db.Decimal(12, 2)
+  durum             String       @default("tamamlandi")
+  tarih             DateTime     @default(now())
+  degisimler        Degisim[]
+  iadeler           Iade[]
+  kalemler          SatisKalem[]
+  odemeler          SatisOdeme[]
+  kullanici         Kullanici?   @relation(fields: [kullaniciId], references: [id])
+  magaza            Magaza       @relation(fields: [magazaId], references: [id])
+  musteri           Musteri?     @relation(fields: [musteriId], references: [id])
+
+  @@map("satislar")
+}
+
+model SatisKalem {
+  id          String  @id @default(uuid())
+  satisId     String
+  urunId      String?
+  urunAd      String
+  marka       String?
+  renk        String?
+  beden       String?
+  adet        Int     @default(1)
+  birimFiyat  Decimal @db.Decimal(12, 2)
+  indirimOran Decimal @default(0) @db.Decimal(5, 2)
+  toplam      Decimal @db.Decimal(12, 2)
+  maliyet     Decimal? @db.Decimal(12, 2)
+  karMarji    Decimal? @db.Decimal(12, 2)
+  satis       Satis   @relation(fields: [satisId], references: [id], onDelete: Cascade)
+  urun        Urun?   @relation(fields: [urunId], references: [id])
+
+  @@map("satis_kalemleri")
+}
+
+model SatisOdeme {
+  id            String       @id @default(uuid())
+  satisId       String
+  tip           String
+  tutar         Decimal      @db.Decimal(12, 2)
+  posId         String?
+  banka         String?
+  taksitSayisi  Int          @default(1)
+  komisyonOran  Decimal      @default(0) @db.Decimal(5, 2)
+  komisyonTutar Decimal      @default(0) @db.Decimal(12, 2)
+  netTahsilat   Decimal      @db.Decimal(12, 2)
+  posTerminal   PosTerminal? @relation(fields: [posId], references: [id])
+  satis         Satis        @relation(fields: [satisId], references: [id], onDelete: Cascade)
+
+  @@map("satis_odemeler")
+}
+
+model Iade {
+  id         String      @id @default(uuid())
+  iadeNo     String      @unique
+  satisId    String?
+  neden      String?
+  notlar     String?
+  toplamIade Decimal     @default(0) @db.Decimal(12, 2)
+  durum      String      @default("beklemede")
+  tarih      DateTime    @default(now())
+  kalemler   IadeKalem[]
+  odemeler   IadeOdeme[]
+  satis      Satis?      @relation(fields: [satisId], references: [id])
+
+  @@map("iadeler")
+}
+
+model IadeKalem {
+  id         String  @id @default(uuid())
+  iadeId     String
+  urunId     String?
+  urunAd     String
+  renk       String?
+  beden      String?
+  adet       Int     @default(1)
+  birimFiyat Decimal @db.Decimal(12, 2)
+  toplam     Decimal @db.Decimal(12, 2)
+  stokaGeri  Boolean @default(true)
+  iade       Iade    @relation(fields: [iadeId], references: [id], onDelete: Cascade)
+  urun       Urun?   @relation(fields: [urunId], references: [id])
+
+  @@map("iade_kalemleri")
+}
+
+model IadeOdeme {
+  id          String       @id @default(uuid())
+  iadeId      String
+  tip         String
+  tutar       Decimal      @db.Decimal(12, 2)
+  posId       String?
+  iade        Iade         @relation(fields: [iadeId], references: [id], onDelete: Cascade)
+  posTerminal PosTerminal? @relation(fields: [posId], references: [id])
+
+  @@map("iade_odemeler")
+}
+
+model Siparis {
+  id              String         @id @default(uuid())
+  siparisNo       String         @unique
+  musteriId       String?
+  magazaId        String?
+  kullaniciId     String?
+  kanal           String         @default("online")
+  durum           String         @default("beklemede")
+  kargoBilgi      String?
+  kargoNo         String?
+  kargoFirma      String?
+  musteriAd       String?
+  musteriTel      String?
+  ozelNot         String?
+  hazirlamaSuresi Int?
+  adres           String?
+  notlar          String?
+  araToplam       Decimal        @default(0) @db.Decimal(12, 2)
+  indirim         Decimal        @default(0) @db.Decimal(12, 2)
+  kargoUcreti     Decimal        @default(0) @db.Decimal(12, 2)
+  genelToplam     Decimal        @default(0) @db.Decimal(12, 2)
+  odemeTip        String?
+  odenmeDurum     String         @default("beklemede")
+  tarih           DateTime       @default(now())
+  guncellendi     DateTime       @updatedAt
+  kalemler        SiparisKalem[]
+  kullanici       Kullanici?     @relation(fields: [kullaniciId], references: [id])
+  magaza          Magaza?        @relation(fields: [magazaId], references: [id])
+  musteri         Musteri?       @relation(fields: [musteriId], references: [id])
+
+  @@map("siparisler")
+}
+
+model SiparisKalem {
+  id         String  @id @default(uuid())
+  siparisId  String
+  urunId     String?
+  urunAd     String
+  renk       String?
+  beden      String?
+  adet       Int     @default(1)
+  birimFiyat Decimal @db.Decimal(12, 2)
+  toplam     Decimal @db.Decimal(12, 2)
+  siparis    Siparis @relation(fields: [siparisId], references: [id], onDelete: Cascade)
+  urun       Urun?   @relation(fields: [urunId], references: [id])
+
+  @@map("siparis_kalemleri")
+}
+
+model Musteri {
+  id          String    @id @default(uuid())
+  ad          String
+  soyad       String?
+  telefon     String?
+  email       String?
+  adres       String?
+  notlar      String?
+  puan        Int       @default(0)
+  dogumTarihi DateTime?
+  olusturuldu DateTime  @default(now())
+  satislar    Satis[]
+  siparisler  Siparis[]
+
+  @@map("musteriler")
+}
+
+model CariHesap {
+  id          String        @id @default(uuid())
+  tip         String
+  // Müşteri CRM kaydına bağ — veresiye satışta bu müşterinin cari hesabı bulunur/açılır.
+  musteriId   String?       @unique
+  ad          String
+  telefon     String?
+  email       String?
+  vergiNo     String?
+  adres       String?
+  bakiye      Decimal       @default(0) @db.Decimal(14, 2)
+  notlar      String?
+  aktif       Boolean       @default(true)
+  olusturuldu DateTime      @default(now())
+  hareketler  CariHareket[]
+
+  @@map("cari_hesaplar")
+}
+
+model CariHareket {
+  id            String    @id @default(uuid())
+  cariId        String
+  tip           String
+  aciklama      String?
+  tutar         Decimal   @db.Decimal(12, 2)
+  bakiyeSonrasi Decimal   @db.Decimal(14, 2)
+  vadeTarihi    DateTime?
+  odendi        Boolean   @default(false)
+  tarih         DateTime  @default(now())
+  cari          CariHesap @relation(fields: [cariId], references: [id], onDelete: Cascade)
+
+  @@map("cari_hareketler")
+}
+
+model BankaHesap {
+  id          String         @id @default(uuid())
+  ad          String
+  banka       String
+  iban        String?
+  magazaId    String?
+  bakiye      Decimal        @default(0) @db.Decimal(14, 2)
+  aktif       Boolean        @default(true)
+  olusturuldu DateTime       @default(now())
+  hareketler  BankaHareket[]
+  magaza      Magaza?        @relation(fields: [magazaId], references: [id])
+
+  @@map("banka_hesaplar")
+}
+
+model BankaHareket {
+  id         String         @id @default(uuid())
+  hesapId    String
+  kategoriId String?
+  magazaId   String?
+  tip        String
+  aciklama   String?
+  tutar      Decimal        @db.Decimal(12, 2)
+  bakiye     Decimal        @db.Decimal(14, 2)
+  referans   String?
+  tarih      DateTime       @default(now())
+  hesap      BankaHesap     @relation(fields: [hesapId], references: [id], onDelete: Cascade)
+  kategori   BankaKategori? @relation(fields: [kategoriId], references: [id])
+  magaza     Magaza?        @relation(fields: [magazaId], references: [id])
+
+  @@map("banka_hareketler")
+}
+
+model MasrafKategori {
+  id          String   @id @default(uuid())
+  ad          String   @unique
+  ikon        String   @default("💰")
+  renk        String   @default("#c9b882")
+  aktif       Boolean  @default(true)
+  olusturuldu DateTime @default(now())
+  masraflar   Masraf[]
+
+  @@map("masraf_kategoriler")
+}
+
+model Masraf {
+  id          String          @id @default(uuid())
+  kategoriId  String?
+  magazaId    String?
+  tutar       Decimal         @db.Decimal(12, 2)
+  aciklama    String?
+  faturaNo    String?
+  tarih       DateTime        @default(now())
+  olusturuldu DateTime        @default(now())
+  kategori    MasrafKategori? @relation(fields: [kategoriId], references: [id])
+  magaza      Magaza?         @relation(fields: [magazaId], references: [id])
+
+  @@map("masraflar")
+}
+
+model GunlukKasa {
+  id              String      @id @default(uuid())
+  magazaId        String
+  tarih           DateTime    @db.Date
+  acilisBakiyesi  Decimal     @default(0) @db.Decimal(12, 2)
+  kapanisBakiyesi Decimal?    @db.Decimal(12, 2)
+  durum           String      @default("acik")
+  notlar          String?
+  olusturuldu     DateTime    @default(now())
+  magaza          Magaza      @relation(fields: [magazaId], references: [id])
+  islemler        KasaIslem[]
+
+  @@unique([magazaId, tarih])
+}
+
+model KasaIslem {
+  id          String      @id @default(uuid())
+  kasaId      String
+  tip         String
+  odeme       String?
+  tutar       Decimal     @db.Decimal(12, 2)
+  aciklama    String?
+  referansId  String?
+  tarih       DateTime    @default(now())
+  gunlukKasa  GunlukKasa  @relation(fields: [kasaId], references: [id])
+  kasa        KasaIslem?  @relation("KasaIslemRef", fields: [referansId], references: [id])
+  altIslemler KasaIslem[] @relation("KasaIslemRef")
+
+  @@map("kasa_islemler")
+}
+
+model Degisim {
+  id        String         @id @default(uuid())
+  degisimNo String         @unique
+  satisId   String
+  magazaId  String?
+  durum     String         @default("beklemede")
+  farkTutar Decimal        @default(0) @db.Decimal(12, 2)
+  farkOdeme String?
+  notlar    String?
+  tarih     DateTime       @default(now())
+  kalemler  DegisimKalem[]
+  magaza    Magaza?        @relation(fields: [magazaId], references: [id])
+  satis     Satis          @relation(fields: [satisId], references: [id])
+
+  @@map("degisimler")
+}
+
+model DegisimKalem {
+  id         String  @id @default(uuid())
+  degisimId  String
+  tip        String
+  urunId     String?
+  urunAd     String
+  renk       String?
+  beden      String?
+  adet       Int     @default(1)
+  birimFiyat Decimal @db.Decimal(12, 2)
+  toplam     Decimal @db.Decimal(12, 2)
+  degisim    Degisim @relation(fields: [degisimId], references: [id], onDelete: Cascade)
+
+  @@map("degisim_kalemler")
+}
+
+model BankaKategori {
+  id          String         @id @default(uuid())
+  ad          String         @unique
+  tip         String
+  aktif       Boolean        @default(true)
+  olusturuldu DateTime       @default(now())
+  hareketler  BankaHareket[]
+
+  @@map("banka_kategoriler")
+}
+
+model Session {
+  id           String    @id
+  shop         String
+  state        String
+  isOnline     Boolean   @default(false)
+  scope        String?
+  expires      DateTime?
+  accessToken  String
+  userId       BigInt?
+  accountOwner Boolean   @default(false)
+  locale       String?
+  collaborator Boolean?  @default(false)
+}

@@ -1,0 +1,54 @@
+panel:
+
+her mağaza için ayrı ayrı stok gözükmeli ve tüm mağazaların toplam stoğu gözükmeli
+
+ 
+nas bag stok kısmını tekrar kontrol et mail at 
+ana dashboard ekranında butonlar kullanılabilir olmalı
+
+
+2 tane hatada whatsappta duruyor
+---
+
+
+renk adları girildi web e bağlantı yapılıp cıkılması lazım
+
+
+
+site: 
+sitede banner kısmında alttaki oklu butonu düzelt
+site yavas paket yükseltilcekmi ona bak 
+webte bitti tükendi olan ürünler en alta gitmeli
+sitede altta kayan mobil kısımda yamukluk var 
+menüye markalar kısmı gelmeli
+kategoriler elden geçirilmeli
+shopify da en son güncelleme yapılan ürün kategorilerde en üste geçirilmeli
+header logoyu küçült
+koleksiyon sayfasında videosu olan ürünleri teker teker öne çektir renklere tıkladıgğnda modal acılsın o ürünün renklerş goxuksun
+çok satanlar kısmı olcak ve oraya bizim en çok sattığımız ürünler otomatik çektirilecek
+yeni gelenler diye bir koleksiyon olacak ve oraya yeni girilen işlem yapılan ve stoğu düzenlenen  ürünler gelecek
+menüden katalog kısmını kaldır 
+"En Çok Sevilen Vega Favorileri" kısmı elle güncellenebilir olsun
+koleksiyon sayfalarında 30 üründe bir pagination olsun 
+
+
+----
+
+bütün ürünlerin sergilendiği sayfada alfabetik sıra oluyo en güncel ürünleri falan cekmeli
+okul çantaları kategorisi açılcak
+katalog yerine tüm ürünlerimiz yaz
+
+
+video yüklendiyse tanıtım yazsın ürün iç sayfada 
+vega favorileri kısmı güncellenecek
+ürün iç sayfa diğer ürünler kısmında renkleri çektir
+shopify panelde tür kısmı ana paneldeki kategori kısmına bağlanacak ve satıcı bağlantısı kaldırılacak
+paneldeki yazılan renk ürünün 
+ana panelde girilen renk adı sitede ürünün altına çektirilen renk kısmındaki modala gelecek ve iç sayfadaki renk seçeneklerindeki ürünlerin altına da gelecek
+
+---------------
+
+online siparişler kısmında adımlamalarda sırayla gidiyor teslim edildikten sonra bir işlem yapılamıyor iade vs onu düzelt
+shopify dan sipariş gelince panele işleniyor ya stoğun otomatik düşmesi lazım ürünü eşleyip 
+stok geçmişi diye bir bölüm olması lazım. Satıldıysa eğer satılan adet yazmalı veya düşüldüyse düşme tarihi vs de yazılması lazım
+veresiye alacak kısmında satısı kaydetmiyor yapsam bile ne stoktan düşüyor ne de borç alacağa kayıt açıyor.
