@@ -1,7 +1,8 @@
 // VegaCanta/src/shopify-urunleri.jsx
 import { useState, useEffect, useRef } from 'react'
-import { shopifyUrunleriGetir, shopifyUrunuGetir, shopifyUrunuAktar, shopifyAktarilanGetir, shopifyUrunGuncelle, shopifySenkronize, shopifyResimTemizle, shopifyKoleksiyonTemizle, shopifyVideoTemizle, magazalariGetir, API_BASE } from './api'
-import { useVega } from './VegaContext'
+import { shopifyUrunuGetir, shopifyUrunuAktar, shopifyAktarilanGetir, shopifyUrunGuncelle, shopifySenkronize, shopifyResimTemizle, shopifyKoleksiyonTemizle, shopifyVideoTemizle, magazalariGetir, API_BASE } from './api'
+import { Page, PageHeader, Button, Field, Input, Select, Textarea, SearchInput, Tabs, Segmented, Banner, Modal, EmptyState, LoadingRows, Skeleton, Menu, onayla, toast } from './ui'
+import { RefreshCw, Download, Pencil, Sparkles, Images, FolderTree, Video, ChevronDown, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const BACKEND_API = API_BASE
 
@@ -19,9 +20,9 @@ async function fetchShopifyProducts(after = null, first = 50, statusFilter = 'ac
   return res.json()
 }
 
-export default function ShopifyUrunleri() {
-  const { t } = useVega()
+const tl = v => `₺${Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
+export default function ShopifyUrunleri() {
   const [tab, setTab] = useState('shopify')
   const [products, setProducts] = useState([])
   const [importedProducts, setImportedProducts] = useState([])
@@ -141,13 +142,13 @@ export default function ShopifyUrunleri() {
         magazaId: importMagazaId,
         stok: product.inventoryQuantity || 0
       })
-      alert(`✓ "${product.title}" başarıyla aktarıldı`)
+      toast.success(`"${product.title}" aktarıldı.`)
       setImportModal(null)
       // Aktarılan ürünü listeden kaldır
       setProducts(prevProducts => prevProducts.filter(p => p.shopifyId !== product.shopifyId))
       loadImportedProducts() // İçe aktarılanlar listesini yenile
     } catch (err) {
-      alert(`✗ Hata: ${err.message}`)
+      toast.error(`Aktarılamadı: ${err.message}`)
     } finally {
       setImporting(prev => ({ ...prev, [product.shopifyId]: false }))
     }
@@ -156,14 +157,14 @@ export default function ShopifyUrunleri() {
   // Geçmişte oluşmuş mükerrer ürün fotoğraflarını Shopify tarafında temizler.
   // Sadece AYNI fotoğrafın fazla kopyaları silinir; tekil fotoğraflara dokunulmaz.
   async function handleResimTemizle() {
-    if (!window.confirm("Shopify'a gönderilmiş tüm ürünlerde mükerrer (çoklanmış) fotoğraflar silinecek. Her fotoğrafın ilk kopyası korunur. Devam edilsin mi?")) return
+    if (!await onayla("Shopify'a gönderilmiş tüm ürünlerde mükerrer (çoklanmış) fotoğraflar silinecek. Her fotoğrafın ilk kopyası korunur.", { title: 'Mükerrer fotoğrafları temizle', confirmLabel: 'Fotoğrafları temizle', tone: 'critical' })) return
     try {
       setCleaning(true)
       setError('')
       const response = await shopifyResimTemizle()
-      alert(`✓ ${response.silinen} mükerrer fotoğraf silindi (${response.islenen}/${response.toplam} ürün tarandı${response.atlanan ? `, ${response.atlanan} atlandı` : ''}).`)
+      toast.success(`${response.silinen} mükerrer fotoğraf silindi (${response.islenen}/${response.toplam} ürün tarandı${response.atlanan ? `, ${response.atlanan} atlandı` : ''}).`)
     } catch (err) {
-      alert(`✗ Temizleme hatası: ${err.message}`)
+      toast.error(`Temizleme yapılamadı: ${err.message}`)
       setError(err.message)
     } finally {
       setCleaning(false)
@@ -179,7 +180,7 @@ export default function ShopifyUrunleri() {
       setError('')
       const rapor = await shopifyKoleksiyonTemizle({ kuru: true })
       if (!rapor.kopyaGrubu) {
-        alert(`✓ Kopya koleksiyon bulunamadı (${rapor.toplamKoleksiyon} koleksiyon tarandı).`)
+        toast.success(`Kopya koleksiyon bulunamadı (${rapor.toplamKoleksiyon} koleksiyon tarandı).`)
         return
       }
       const ornekler = (rapor.detay || [])
@@ -190,17 +191,18 @@ export default function ShopifyUrunleri() {
       const atlanan = (rapor.atlanan || []).length
         ? `\n\n${rapor.atlanan.length} grup atlanacak (kurallı koleksiyon içeriyor).`
         : ''
-      const onay = window.confirm(
+      const onay = await onayla(
         `${rapor.kopyaGrubu} adet aynı adlı koleksiyon grubu bulundu.\n` +
-        `${rapor.silinen} kopya koleksiyon SİLİNECEK, içindeki ${rapor.tasinanUrun} ürün bağı en eski koleksiyona taşınacak.\n\n` +
+        `${rapor.silinen} kopya koleksiyon silinecek, içindeki ${rapor.tasinanUrun} ürün bağı en eski koleksiyona taşınacak.\n\n` +
         `${ornekler}${devami}${atlanan}\n\n` +
-        'Bu işlem GERİ ALINAMAZ. Devam edilsin mi?'
+        'Bu işlem geri alınamaz.',
+        { title: 'Kopya koleksiyonları birleştir', confirmLabel: `${rapor.silinen} koleksiyonu sil`, tone: 'critical' }
       )
       if (!onay) return
       const sonuc = await shopifyKoleksiyonTemizle({ kuru: false })
-      alert(`✓ ${sonuc.silinen} kopya koleksiyon silindi, ${sonuc.tasinanUrun} ürün bağı taşındı.`)
+      toast.success(`${sonuc.silinen} kopya koleksiyon silindi, ${sonuc.tasinanUrun} ürün bağı taşındı.`)
     } catch (err) {
-      alert(`✗ Koleksiyon temizleme hatası: ${err.message}`)
+      toast.error(`Koleksiyon temizlenemedi: ${err.message}`)
       setError(err.message)
     } finally {
       setCleaning(false)
@@ -215,7 +217,7 @@ export default function ShopifyUrunleri() {
       setError('')
       const rapor = await shopifyVideoTemizle({ kuru: true })
       if (!rapor.kopyaGrubu) {
-        alert(`✓ Mükerrer video bulunamadı (${rapor.toplamVideo} video dosyası tarandı).`)
+        toast.success(`Mükerrer video bulunamadı (${rapor.toplamVideo} video dosyası tarandı).`)
         return
       }
       const ornekler = (rapor.detay || [])
@@ -223,18 +225,19 @@ export default function ShopifyUrunleri() {
         .map(d => `• ${d.korunanDosya} — ${d.silinecekAdet} kopya`)
         .join('\n')
       const devami = (rapor.detay || []).length > 10 ? '\n• ...' : ''
-      const onay = window.confirm(
+      const onay = await onayla(
         `${rapor.toplamVideo} video dosyası tarandı.\n` +
-        `${rapor.kopyaGrubu} grupta toplam ${rapor.silinen} fazla kopya SİLİNECEK.\n` +
+        `${rapor.kopyaGrubu} grupta toplam ${rapor.silinen} fazla kopya silinecek.\n` +
         'Her gruptan bir dosya korunur; bir ürüne bağlı olan dosyalara dokunulmaz.\n\n' +
         `${ornekler}${devami}\n\n` +
-        'Bu işlem GERİ ALINAMAZ. Devam edilsin mi?'
+        'Bu işlem geri alınamaz.',
+        { title: 'Kopya videoları sil', confirmLabel: `${rapor.silinen} videoyu sil`, tone: 'critical' }
       )
       if (!onay) return
       const sonuc = await shopifyVideoTemizle({ kuru: false })
-      alert(`✓ ${sonuc.silinen} mükerrer video dosyası silindi.`)
+      toast.success(`${sonuc.silinen} mükerrer video dosyası silindi.`)
     } catch (err) {
-      alert(`✗ Video temizleme hatası: ${err.message}`)
+      toast.error(`Video temizlenemedi: ${err.message}`)
       setError(err.message)
     } finally {
       setCleaning(false)
@@ -246,11 +249,11 @@ export default function ShopifyUrunleri() {
       setSyncing(true)
       setError('')
       const response = await shopifySenkronize()
-      alert(`✓ ${response.mesaj}`)
+      toast.success(response.mesaj)
       loadImportedProducts()
       loadShopifyProducts() // Shopify ürün listesini de yenile
     } catch (err) {
-      alert(`✗ Senkronizasyon hatası: ${err.message}`)
+      toast.error(`Senkronizasyon yapılamadı: ${err.message}`)
       setError(err.message)
     } finally {
       setSyncing(false)
@@ -274,17 +277,18 @@ export default function ShopifyUrunleri() {
   function closeDetailModal() {
     setDetailProduct(null)
     setDetailError('')
+    setDetailLoading(false)
   }
 
   async function handleUpdateProduct() {
     try {
       if (!editingId) return
       await shopifyUrunGuncelle(editingId, editForm)
-      alert('✓ Ürün güncellendi')
+      toast.success('Ürün güncellendi.')
       setEditingId(null)
       loadImportedProducts() // Güncellenen listeyi tekrar yükle
     } catch (err) {
-      alert(`✗ Güncelleme hatası: ${err.message}`)
+      toast.error(`Ürün güncellenemedi: ${err.message}`)
     }
   }
 
@@ -364,498 +368,224 @@ export default function ShopifyUrunleri() {
     // sürekli titremesine/oynamasına yol açıyordu.
   }, [autoFit, tab, products.length, importedProducts.length])
 
+  const detayAcik = detailProduct || detailLoading || detailError
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: t.bg, color: t.text }}>
-      <style>{`
-        .vega-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-        .vega-scroll-x table{min-width:640px;}
-        .vega-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap!important;}
-        .vega-tabs button{white-space:nowrap;flex-shrink:0;}
-        @media (max-width:860px){
-          .vega-page-pad{padding-left:14px!important;padding-right:14px!important;}
-          .vega-grid-2{grid-template-columns:1fr!important;}
-        }
-        @media (max-width:600px){
-          .vega-header-row{flex-direction:column;align-items:stretch!important;}
-          .vega-header-actions{width:100%;}
-        }
-      `}</style>
-      {/* Header */}
-      <div className="vega-page-pad" style={{ padding: '20px 24px', borderBottom: `1px solid ${t.border}`, flexShrink: 0 }}>
-        <div className="vega-header-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-          <div>
-            <h1 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '600' }}>🛍️ Shopify Entegrasyonu</h1>
-            <p style={{ margin: 0, fontSize: '13px', color: t.textMuted }}>Shopify mağazanızdaki ürünleri yönetin ve kendi panelinize aktarın.</p>
-            <div style={{ marginTop: '8px' }}>
-              <input
-                placeholder="Ürün adı, marka, kod ara..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '10px', border: `1px solid ${t.border}`, background: t.input, color: t.text, width: '100%', maxWidth: '380px' }}
-              />
-            </div>
-          </div>
-          <div className="vega-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <Page style={{ paddingBottom: 0, flexShrink: 0 }}>
+        <PageHeader title="Shopify ürünleri" subtitle="Shopify mağazanızdaki ürünleri yönetin ve panelinize aktarın."
+          actions={<>
             {/* Geçmişte çoklanmış fotoğrafları tek seferde temizler. Yayınlama akışı artık
-                mükerrer yüklemiyor (bkz. backend reconcileShopifyProductImages) — bu buton
+                mükerrer yüklemiyor (bkz. backend reconcileShopifyProductImages) — bu araçlar
                 sorun ortaya çıkmadan ÖNCE oluşmuş kopyaları düzeltmek içindir. */}
-            <button
-              className="vega-header-actions"
-              onClick={handleResimTemizle}
-              disabled={cleaning}
-              title="Shopify'daki mükerrer ürün fotoğraflarını siler (her fotoğrafın ilk kopyası kalır)"
-              style={{
-                padding: '10px 16px',
-                borderRadius: '10px',
-                border: `1px solid ${t.border}`,
-                background: 'transparent',
-                color: t.textMuted,
-                cursor: cleaning ? 'default' : 'pointer',
-                fontSize: '13px',
-                fontWeight: '500',
-                opacity: cleaning ? 0.6 : 1
-              }}
-            >
-              {cleaning ? 'Temizleniyor...' : '🧹 Mükerrer Fotoğrafları Temizle'}
-            </button>
-            <button
-              className="vega-header-actions"
-              onClick={handleKoleksiyonTemizle}
-              disabled={cleaning}
-              title="Aynı adlı kopya koleksiyonları raporlar; onaylarsanız birleştirip siler"
-              style={{
-                padding: '10px 16px',
-                borderRadius: '10px',
-                border: `1px solid ${t.border}`,
-                background: 'transparent',
-                color: t.textMuted,
-                cursor: cleaning ? 'default' : 'pointer',
-                fontSize: '13px',
-                fontWeight: '500',
-                opacity: cleaning ? 0.6 : 1
-              }}
-            >
-              🗂 Kopya Koleksiyonlar
-            </button>
-            <button
-              className="vega-header-actions"
-              onClick={handleVideoTemizle}
-              disabled={cleaning}
-              title="Shopify Dosyalar'daki mükerrer video kopyalarını raporlar; onaylarsanız siler"
-              style={{
-                padding: '10px 16px',
-                borderRadius: '10px',
-                border: `1px solid ${t.border}`,
-                background: 'transparent',
-                color: t.textMuted,
-                cursor: cleaning ? 'default' : 'pointer',
-                fontSize: '13px',
-                fontWeight: '500',
-                opacity: cleaning ? 0.6 : 1
-              }}
-            >
-              🎬 Kopya Videolar
-            </button>
-            <button
-              className="vega-header-actions"
-              onClick={tab === 'shopify' ? loadShopifyProducts : loadImportedProducts}
-              disabled={loading}
-              style={{
-                padding: '10px 16px',
-                borderRadius: '10px',
-                border: `1px solid ${t.accent}55`,
-                background: t.accentBg,
-                color: t.accent,
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: '500',
-                opacity: loading ? 0.6 : 1
-              }}
-            >
-              {loading ? 'Yükleniyor...' : '↻ Yenile'}
-            </button>
+            <Menu trigger={({ toggle }) => (
+              <Button icon={Sparkles} iconRight={ChevronDown} onClick={toggle} loading={cleaning}>{cleaning ? 'Temizleniyor…' : 'Temizlik araçları'}</Button>
+            )} items={[
+              { text: 'Mükerrer fotoğrafları temizle', icon: Images, onClick: handleResimTemizle, disabled: cleaning },
+              { text: 'Kopya koleksiyonlar', icon: FolderTree, onClick: handleKoleksiyonTemizle, disabled: cleaning },
+              { text: 'Kopya videolar', icon: Video, onClick: handleVideoTemizle, disabled: cleaning },
+            ]} />
+            {tab === 'imported' && <Button icon={RefreshCw} onClick={handleSync} loading={syncing}>{syncing ? 'Senkronize ediliyor…' : 'Senkronize et'}</Button>}
+            <Button variant="primary" icon={RefreshCw} onClick={tab === 'shopify' ? loadShopifyProducts : loadImportedProducts} loading={loading}>
+              {loading ? 'Yükleniyor…' : 'Yenile'}
+            </Button>
+          </>}>
+          <Tabs value={tab} onChange={setTab} items={[
+            { id: 'shopify', label: `Shopify ürünleri (${filteredProducts.length})` },
+            { id: 'imported', label: `İçe aktarılanlar (${filteredImportedProducts.length})` },
+          ]} />
+        </PageHeader>
+      </Page>
+
+      <div ref={containerRef} className="vg-page" style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingTop: 16 }}>
+        {error && <Banner tone="critical">{error}</Banner>}
+
+        <div className="vg-table-wrap">
+          <div className="vg-table-toolbar">
+            <SearchInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ürün adı, marka, kod" aria-label="Ürün ara" style={{ flex: 1, minWidth: 200, maxWidth: 360 }} />
+            {tab === 'shopify' && (
+              <Segmented label="Durum" value={statusFilter} onChange={v => { setStatusFilter(v); setPage(0) }}
+                options={[{ value: 'active', label: 'Aktif' }, { value: 'draft', label: 'Taslak' }, { value: 'all', label: 'Tümü' }]} />
+            )}
           </div>
-        </div>
-      </div>
 
-      <div className="vega-header-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: `1px solid ${t.border}`, flexWrap: 'wrap', gap: 8 }}>
-        <div className="vega-tabs" style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => setTab('shopify')}
-            style={{ padding: '10px 16px', fontWeight: '500', borderBottom: `2px solid ${tab === 'shopify' ? t.accent : 'transparent'}`, color: tab === 'shopify' ? t.accent : t.textMuted, transition: 'color 200ms ease, border-color 200ms ease', cursor: 'pointer', background: 'none', borderLeft: 'none', borderRight: 'none', borderTop: 'none' }}
-          >
-            📦 Shopify Ürünleri ({filteredProducts.length})
-          </button>
-          <button
-            onClick={() => setTab('imported')}
-            style={{ padding: '10px 16px', fontWeight: '500', borderBottom: `2px solid ${tab === 'imported' ? t.accent : 'transparent'}`, color: tab === 'imported' ? t.accent : t.textMuted, transition: 'color 200ms ease, border-color 200ms ease', cursor: 'pointer', background: 'none', borderLeft: 'none', borderRight: 'none', borderTop: 'none' }}
-          >
-            ✓ İçe Aktarılanlar ({filteredImportedProducts.length})
-          </button>
-        </div>
-        {tab === 'shopify' && (
-          <div style={{ display: 'flex', gap: 6, paddingBottom: 8 }}>
-            {[['active','✓ Aktif'],['draft','Taslak'],['all','Tümü']].map(([val, label]) => (
-              <button key={val} onClick={() => { setStatusFilter(val); setPage(0) }}
-                style={{ padding: '5px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer',
-                  border: `1px solid ${statusFilter === val ? t.accent : t.border}`,
-                  background: statusFilter === val ? t.accentBg : 'transparent',
-                  color: statusFilter === val ? t.accent : t.textMuted, fontWeight: statusFilter === val ? 600 : 400 }}>
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+          {loading && <LoadingRows card={false} rows={8} />}
 
-      {error && (
-        <div style={{ 
-          padding: '12px 16px', 
-          borderRadius: '8px', 
-          background: 'rgba(235,87,87,0.1)',
-          border: `1px solid rgba(235,87,87,0.3)`,
-          color: '#eb5757',
-          marginBottom: '16px',
-          fontSize: '13px',
-          margin: '0 24px 16px 24px' // İçerik ile aynı hizaya getirmek için
-        }}>
-          Hata: {error}
-        </div>
-      )}
+          {!loading && !error && currentItems.length > 0 && (
+            <>
+              <div className="vg-table-scroll">
+                <table ref={tableRef} className="vg-table" style={{ minWidth: 720 }}>
+                  <thead><tr><th>ID / kod</th><th>Ürün adı</th><th>Marka</th><th>Kategori</th><th className="is-num">Fiyat</th><th></th></tr></thead>
+                  <tbody ref={tbodyRef}>
+                    {currentItems.map((item, index) => {
+                      // Her iki tab için ortak alanlar
+                      const id = tab === 'shopify' ? (item.shopifyId || item.id) : item.kod;
+                      const ad = tab === 'shopify' ? (item.title || item.handle) : item.ad;
+                      const marka = tab === 'shopify' ? item.vendor : item.marka;
+                      const kategori = tab === 'shopify' ? item.productType : item.kategori;
+                      const price = tab === 'shopify' ? item.price : item.satisF;
 
-      {/* Content */}
-      <div ref={containerRef} className="vega-page-pad" style={{ flex: '1', overflowY: 'auto', padding: '0 24px 20px 24px' }}> {/* Üst padding kaldırıldı, alttan eklendi */}
-        {loading && <div style={{ color: t.textMuted, fontWeight: '500', textAlign: 'center', padding: '40px 0' }}>Yükleniyor...</div>}
-
-        {!loading && !error && currentItems.length > 0 && (
-          <div style={{ borderRadius: '12px', border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-            <div className="vega-scroll-x">
-            <table ref={tableRef} style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: t.card, borderBottom: `1px solid ${t.border}` }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ID / Kod</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ürün Adı</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Marka</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Kategori</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fiyat</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: t.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>İşlem</th>
-                </tr>
-              </thead>
-              <tbody ref={tbodyRef}>
-                {currentItems.map((item, index) => {
-                  // Her iki tab için ortak alanlar
-                  const id = tab === 'shopify' ? (item.shopifyId || item.id) : item.kod;
-                  const ad = tab === 'shopify' ? (item.title || item.handle) : item.ad;
-                  const marka = tab === 'shopify' ? item.vendor : item.marka;
-                  const kategori = tab === 'shopify' ? item.productType : item.kategori;
-                  const price = tab === 'shopify' ? parseFloat(item.price || 0).toFixed(2) : parseFloat(item.satisF || 0).toFixed(2);
-
-                  return (
-                    <tr 
-                      key={id || index} 
-                      onClick={() => { if (tab === 'shopify') loadProductDetail(id); else openEditModal(item) }}
-                      style={{ 
-                        borderBottom: `1px solid ${t.border}`,
-                        cursor: tab === 'shopify' || tab === 'imported' ? 'pointer' : 'default',
-                        background: t.bg,
-                        transition: 'background 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = t.hover}
-                      onMouseLeave={(e) => e.currentTarget.style.background = t.bg}
-                    >
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: t.accent, fontWeight: '500' }}>{id}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px' }}>{ad}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: t.textMuted }}>{marka}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: t.textMuted }}>{kategori}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: t.accent, fontWeight: '500' }}>{price} TL</td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          {tab === 'shopify' && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleImport(item) }} 
-                              disabled={importing[item.shopifyId]}
-                              style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${t.accent}33`, background: t.accentBg, color: t.accent, fontSize: '12px', cursor: 'pointer', opacity: importing[item.shopifyId] ? 0.6 : 1 }}
-                            >
-                              {importing[item.shopifyId] ? 'Aktarılıyor...' : '➕ Aktar'}
-                            </button>
-                          )}
-                          {tab === 'imported' && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); openEditModal(item) }} 
-                              style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${t.border}`, background: 'transparent', color: t.textMuted, fontSize: '12px', cursor: 'pointer' }}
-                            >
-                              ✏️ Düzenle
-                            </button>
-                          )}
-                          {tab === 'imported' && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); handleSync() }} // Tüm aktarılanları senkronize eder
-                              disabled={syncing}
-                              style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${t.border}`, background: 'transparent', color: t.textMuted, fontSize: '12px', cursor: 'pointer', opacity: syncing ? 0.6 : 1 }}
-                            >
-                              {syncing ? 'Senk. Ediliyor...' : 'Senkron'}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            </div>
-            {/* Pagination controls */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: `1px solid ${t.border}`, background: t.card, flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ color: t.textMuted, fontSize: '13px' }}>
-                Gösterilen {start + 1} - {end} / {total}
+                      return (
+                        <tr key={id || index} className="is-clickable"
+                          onClick={() => { if (tab === 'shopify') loadProductDetail(id); else openEditModal(item) }}>
+                          <td className="vg-code vg-muted" style={{ maxWidth: 180 }}><div className="vg-truncate">{String(id || '').replace('gid://shopify/Product/', '')}</div></td>
+                          <td className="is-strong">{ad}</td>
+                          <td className="vg-muted">{marka || '—'}</td>
+                          <td className="vg-muted">{kategori || '—'}</td>
+                          <td className="is-num is-strong">{tl(price)}</td>
+                          <td onClick={e => e.stopPropagation()}>
+                            {tab === 'shopify' && (
+                              <Button size="sm" icon={Download} onClick={() => handleImport(item)} loading={importing[item.shopifyId]}>
+                                {importing[item.shopifyId] ? 'Aktarılıyor…' : 'Aktar'}
+                              </Button>
+                            )}
+                            {tab === 'imported' && (
+                              <Button size="sm" icon={Pencil} onClick={() => openEditModal(item)}>Düzenle</Button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button onClick={goPrev} disabled={page === 0} style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${t.border}`, background: 'transparent', color: t.textMuted, cursor: 'pointer', opacity: page === 0 ? 0.5 : 1 }}>Önceki</button>
-                <div style={{ fontSize: '13px', color: t.textMuted }}>{page + 1} / {totalPages}</div>
-                <button onClick={goNext} disabled={page >= totalPages - 1} style={{ padding: '6px 10px', borderRadius: '8px', border: `1px solid ${t.border}`, background: 'transparent', color: t.textMuted, cursor: 'pointer', opacity: page >= totalPages - 1 ? 0.5 : 1 }}>Sonraki</button>
-                <select value={autoFit ? 'auto' : perPage} onChange={(e) => {
-                  const v = e.target.value
-                  if (v === 'auto') { setAutoFit(true); setPage(0) } else setPerPageFixed(Number(v))
-                }} style={{ padding: '6px 8px', borderRadius: '8px', border: `1px solid ${t.border}`, background: t.input, color: t.text }}>
-                  <option value="auto">Ekrana Sığdır</option>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!loading && !error && currentItems.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: t.textMuted, backgroundColor: t.card, borderRadius: '12px', border: `1px solid ${t.border}` }}>
-            <p style={{ fontSize: '14px' }}>Ürün bulunamadı</p>
-          </div>
-        )}
-      </div>
-
-      {detailProduct && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ width: '100%', maxWidth: '980px', maxHeight: '88vh', overflowY: 'auto', background: t.bg, borderRadius: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.45)', padding: '24px', position: 'relative' }}>
-            <button onClick={closeDetailModal} style={{ position: 'absolute', top: '18px', right: '18px', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '20px', color: t.text }}>✕</button>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', marginBottom: '18px' }}>
-              <div style={{ flex: '1 1 240px' }}>
-                <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 700 }}>{detailProduct.title}</h2>
-                <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: t.textMuted }}>{detailProduct.vendor} · {detailProduct.productType}</p>
-                <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: t.textMuted }}><strong>Toplam Stok:</strong> {detailProduct.totalInventory ?? '—'}</p>
-                <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: t.textMuted }}><strong>Handle:</strong> {detailProduct.handle}</p>
-              </div>
-              <div style={{ flex: '1 1 240px' }}>
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  {detailProduct.images?.edges?.length > 0 && detailProduct.images.edges.slice(0, 3).map(({ node }, idx) => (
-                    <img key={idx} src={node.url} alt={detailProduct.title} style={{ width: '100%', borderRadius: '14px', objectFit: 'cover', maxHeight: '160px' }} />
-                  ))}
+              <div className="vg-table-footer">
+                <span className="vg-num">{start + 1}–{end} / {total} ürün</span>
+                <div className="vg-row" style={{ gap: 6 }}>
+                  <Button size="sm" icon={ChevronLeft} onClick={goPrev} disabled={page === 0}>Önceki</Button>
+                  <span className="vg-num">{page + 1} / {totalPages}</span>
+                  <Button size="sm" iconRight={ChevronRight} onClick={goNext} disabled={page >= totalPages - 1}>Sonraki</Button>
+                  <Select size="sm" value={autoFit ? 'auto' : perPage} aria-label="Sayfa başına" style={{ width: 'auto' }} onChange={(e) => {
+                    const v = e.target.value
+                    if (v === 'auto') { setAutoFit(true); setPage(0) } else setPerPageFixed(Number(v))
+                  }}>
+                    <option value="auto">Ekrana sığdır</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </Select>
                 </div>
               </div>
+            </>
+          )}
+
+          {!loading && !error && currentItems.length === 0 && (
+            <EmptyState icon={ShoppingCart} title={search ? `"${search}" ile eşleşen ürün yok` : 'Ürün bulunamadı'} />
+          )}
+        </div>
+      </div>
+
+      {detayAcik && (
+        <Modal title={detailProduct?.title || 'Ürün detayı'} subtitle={detailProduct ? [detailProduct.vendor, detailProduct.productType].filter(Boolean).join(' · ') : undefined}
+          onClose={closeDetailModal} size="xl">
+          {detailLoading && <div className="vg-stack"><Skeleton h={160} /><Skeleton h={120} /></div>}
+          {detailError && <Banner tone="critical">Ürün detayı alınamadı: {detailError}</Banner>}
+          {detailProduct && <>
+            <div className="vg-grid-2">
+              <div className="vg-stack" style={{ gap: 4 }}>
+                <div className="vg-kv"><span>Toplam stok</span><span>{detailProduct.totalInventory ?? '—'}</span></div>
+                <div className="vg-kv"><span>Handle</span><span className="vg-code">{detailProduct.handle}</span></div>
+              </div>
+              {detailProduct.images?.edges?.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {detailProduct.images.edges.slice(0, 3).map(({ node }, idx) => (
+                    <img key={idx} src={node.url} alt={detailProduct.title} style={{ width: '100%', aspectRatio: '1', borderRadius: 8, objectFit: 'cover', boxShadow: 'inset 0 0 0 1px var(--line)' }} />
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="vega-grid-2" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 1fr) minmax(240px, 1fr)', gap: '24px' }}>
-              <div>
-                <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 600 }}>Varyasyonlar</h3>
-                <div style={{ border: `1px solid ${t.border}`, borderRadius: '16px', overflow: 'hidden' }}>
-                  <div className="vega-scroll-x">
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: t.card }}>
-                        <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: '12px', color: t.textMuted, fontWeight: 600 }}>Başlık</th>
-                        <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: '12px', color: t.textMuted, fontWeight: 600 }}>Fiyat</th>
-                        <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: '12px', color: t.textMuted, fontWeight: 600 }}>SKU</th>
-                        <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: '12px', color: t.textMuted, fontWeight: 600 }}>Stok</th>
-                        <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: '12px', color: t.textMuted, fontWeight: 600 }}>Barcode</th>
-                      </tr>
-                    </thead>
+            <div>
+              <div className="vg-section-label" style={{ marginBottom: 6 }}>Varyasyonlar</div>
+              <div className="vg-table-wrap" style={{ boxShadow: 'inset 0 0 0 1px var(--line)' }}>
+                <div className="vg-table-scroll">
+                  <table className="vg-table vg-table--compact">
+                    <thead><tr><th>Başlık</th><th className="is-num">Fiyat</th><th>SKU</th><th className="is-num">Stok</th><th>Barkod</th></tr></thead>
                     <tbody>
                       {detailProduct.variants?.edges?.map(({ node }) => (
                         <tr key={node.id}>
-                          <td style={{ padding: '12px 14px', borderTop: `1px solid ${t.border}`, color: t.text }}>{node.title}</td>
-                          <td style={{ padding: '12px 14px', borderTop: `1px solid ${t.border}`, color: t.text }}>{parseFloat(node.price || 0).toFixed(2)} TL</td>
-                          <td style={{ padding: '12px 14px', borderTop: `1px solid ${t.border}`, color: t.text }}>{node.sku || '-'}</td>
-                          <td style={{ padding: '12px 14px', borderTop: `1px solid ${t.border}`, color: t.text }}>{node.inventoryQuantity ?? '—'}</td>
-                          <td style={{ padding: '12px 14px', borderTop: `1px solid ${t.border}`, color: t.text }}>{node.barcode || '-'}</td>
+                          <td>{node.title}</td>
+                          <td className="is-num">{tl(node.price)}</td>
+                          <td className="vg-code">{node.sku || '—'}</td>
+                          <td className="is-num">{node.inventoryQuantity ?? '—'}</td>
+                          <td className="vg-code">{node.barcode || '—'}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  </div>
                 </div>
               </div>
+            </div>
+
+            <div className="vg-grid-2">
               <div>
-                <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 600 }}>Metafields</h3>
+                <div className="vg-section-label" style={{ marginBottom: 6 }}>Metafield'lar</div>
                 {detailProduct.metafields?.edges?.length > 0 ? (
-                  <div style={{ display: 'grid', gap: '12px' }}>
+                  <div className="vg-stack" style={{ gap: 6 }}>
                     {detailProduct.metafields.edges.map(({ node }) => (
-                      <div key={node.id} style={{ padding: '12px 14px', borderRadius: '14px', border: `1px solid ${t.border}`, background: t.card }}>
-                        <div style={{ fontSize: '12px', color: t.textMuted, marginBottom: '6px' }}><strong>{node.namespace}.{node.key}</strong></div>
-                        <div style={{ fontSize: '13px', color: t.text }}>{node.value}</div>
-                        <div style={{ fontSize: '11px', color: t.textMuted, marginTop: '6px' }}>{node.type || ''}</div>
+                      <div key={node.id} className="vg-tile">
+                        <div className="vg-code vg-muted">{node.namespace}.{node.key}</div>
+                        <div style={{ fontSize: 13, marginTop: 2, wordBreak: 'break-word' }}>{node.value}</div>
+                        {node.type && <div className="vg-help">{node.type}</div>}
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <div style={{ padding: '14px', borderRadius: '14px', border: `1px solid ${t.border}`, background: t.card, color: t.textMuted }}>Metafield bulunamadı.</div>
-                )}
+                ) : <div className="vg-tile vg-muted" style={{ fontSize: 13 }}>Metafield yok.</div>}
+              </div>
+              <div>
+                <div className="vg-section-label" style={{ marginBottom: 6 }}>Açıklama</div>
+                <div className="vg-tile" style={{ minHeight: 120, whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: '20px' }}>
+                  {detailProduct.description || 'Açıklama yok.'}
+                </div>
               </div>
             </div>
-
-            <div style={{ marginTop: '24px' }}>
-              <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 600 }}>Açıklama</h3>
-              <div style={{ minHeight: '120px', padding: '16px', borderRadius: '16px', border: `1px solid ${t.border}`, background: t.card, color: t.text, whiteSpace: 'pre-wrap' }}>
-                {detailProduct.description || 'Açıklama yok.'}
-              </div>
-            </div>
-          </div>
-        </div>
+          </>}
+        </Modal>
       )}
 
       {editingId && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem' }}>
-          <div style={{ backgroundColor: t.bg, borderRadius: '1rem', padding: '1.5rem', /* @media (min-width: 640px)': { padding: '2rem' }, */ maxWidth: '32rem', width: '100%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)', border: `1px solid ${t.border}` }}>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: '700', color: t.text, marginBottom: '1.5rem' }}>Ürün Düzenle</h3>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label htmlFor="edit-ad" style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: t.textMuted, marginBottom: '0.25rem' }}>Ürün Adı</label>
-                <input
-                  type="text"
-                  id="edit-ad"
-                  value={editForm.ad || ''}
-                  onChange={e => setEditForm({ ...editForm, ad: e.target.value })}
-                  style={{ width: '100%', border: `1px solid ${t.border}`, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', backgroundColor: t.input, color: t.text, outline: 'none', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', transition: 'border-color 200ms ease, box-shadow 200ms ease' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', /* @media (min-width: 640px)': { gridTemplateColumns: '1fr 1fr' } */ }}>
-                <div>
-                  <label htmlFor="edit-alisF" style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: t.textMuted, marginBottom: '0.25rem' }}>Alış Fiyatı</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    id="edit-alisF"
-                    value={editForm.alisF || ''}
-                    onChange={e => setEditForm({ ...editForm, alisF: e.target.value })}
-                    style={{ width: '100%', border: `1px solid ${t.border}`, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', backgroundColor: t.input, color: t.text, outline: 'none', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', transition: 'border-color 200ms ease, box-shadow 200ms ease' }}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="edit-satisF" style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: t.textMuted, marginBottom: '0.25rem' }}>Satış Fiyatı</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    id="edit-satisF"
-                    value={editForm.satisF || ''}
-                    onChange={e => setEditForm({ ...editForm, satisF: e.target.value })}
-                    style={{ width: '100%', border: `1px solid ${t.border}`, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', backgroundColor: t.input, color: t.text, outline: 'none', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', transition: 'border-color 200ms ease, box-shadow 200ms ease' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', /* @media (min-width: 640px)': { gridTemplateColumns: '1fr 1fr' } */ }}>
-                <div>
-                  <label htmlFor="edit-marka" style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: t.textMuted, marginBottom: '0.25rem' }}>Marka</label>
-                  <input
-                    type="text"
-                    id="edit-marka"
-                    value={editForm.marka || ''}
-                    onChange={e => setEditForm({ ...editForm, marka: e.target.value })}
-                    style={{ width: '100%', border: `1px solid ${t.border}`, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', backgroundColor: t.input, color: t.text, outline: 'none', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', transition: 'border-color 200ms ease, box-shadow 200ms ease' }}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="edit-kdv" style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: t.textMuted, marginBottom: '0.25rem' }}>KDV %</label>
-                  <input
-                    type="number"
-                    id="edit-kdv"
-                    value={editForm.kdv || ''}
-                    onChange={e => setEditForm({ ...editForm, kdv: e.target.value })}
-                    style={{ width: '100%', border: `1px solid ${t.border}`, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', backgroundColor: t.input, color: t.text, outline: 'none', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', transition: 'border-color 200ms ease, box-shadow 200ms ease' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="edit-kategori" style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: t.textMuted, marginBottom: '0.25rem' }}>Kategori</label>
-                <input
-                  type="text"
-                  id="edit-kategori"
-                  value={editForm.kategori || ''}
-                  onChange={e => setEditForm({ ...editForm, kategori: e.target.value })}
-                  style={{ width: '100%', border: `1px solid ${t.border}`, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', backgroundColor: t.input, color: t.text, outline: 'none', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', transition: 'border-color 200ms ease, box-shadow 200ms ease' }}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="edit-aciklama" style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: t.textMuted, marginBottom: '0.25rem' }}>Açıklama</label>
-                <textarea
-                  id="edit-aciklama"
-                  value={editForm.aciklama || ''}
-                  onChange={e => setEditForm({ ...editForm, aciklama: e.target.value })}
-                  style={{ width: '100%', border: `1px solid ${t.border}`, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', backgroundColor: t.input, color: t.text, outline: 'none', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', transition: 'border-color 200ms ease, box-shadow 200ms ease' }}
-                  rows="3"
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '2rem' }}>
-              <button
-                onClick={() => setEditingId(null)}
-                style={{ flex: '1', padding: '0.625rem 1.25rem', border: `1px solid ${t.border}`, borderRadius: '0.5rem', fontWeight: '500', color: t.textMuted, backgroundColor: t.card, cursor: 'pointer', transition: 'background-color 200ms ease, border-color 200ms ease', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.18)' }}
-              >
-                İptal
-              </button>
-              <button
-                onClick={handleUpdateProduct}
-                style={{ flex: '1', padding: '0.625rem 1.25rem', backgroundColor: t.accent, color: 'white', borderRadius: '0.5rem', fontWeight: '500', cursor: 'pointer', transition: 'background-color 200ms ease', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}
-              >
-                Kaydet
-              </button>
-            </div>
+        <Modal title="Ürünü düzenle" onClose={() => setEditingId(null)}
+          footer={<>
+            <Button variant="plain" onClick={() => setEditingId(null)}>Vazgeç</Button>
+            <Button variant="primary" onClick={handleUpdateProduct}>Değişiklikleri kaydet</Button>
+          </>}>
+          <Field label="Ürün adı" htmlFor="edit-ad"><Input id="edit-ad" value={editForm.ad || ''} onChange={e => setEditForm({ ...editForm, ad: e.target.value })} /></Field>
+          <div className="vg-grid-2">
+            <Field label="Alış fiyatı" htmlFor="edit-alisF"><Input id="edit-alisF" type="number" step="0.01" className="vg-num" value={editForm.alisF || ''} onChange={e => setEditForm({ ...editForm, alisF: e.target.value })} /></Field>
+            <Field label="Satış fiyatı" htmlFor="edit-satisF"><Input id="edit-satisF" type="number" step="0.01" className="vg-num" value={editForm.satisF || ''} onChange={e => setEditForm({ ...editForm, satisF: e.target.value })} /></Field>
           </div>
-        </div>
+          <div className="vg-grid-2">
+            <Field label="Marka" htmlFor="edit-marka"><Input id="edit-marka" value={editForm.marka || ''} onChange={e => setEditForm({ ...editForm, marka: e.target.value })} /></Field>
+            <Field label="KDV %" htmlFor="edit-kdv"><Input id="edit-kdv" type="number" className="vg-num" value={editForm.kdv || ''} onChange={e => setEditForm({ ...editForm, kdv: e.target.value })} /></Field>
+          </div>
+          <Field label="Kategori" htmlFor="edit-kategori"><Input id="edit-kategori" value={editForm.kategori || ''} onChange={e => setEditForm({ ...editForm, kategori: e.target.value })} /></Field>
+          <Field label="Açıklama" htmlFor="edit-aciklama"><Textarea id="edit-aciklama" rows={3} value={editForm.aciklama || ''} onChange={e => setEditForm({ ...editForm, aciklama: e.target.value })} /></Field>
+        </Modal>
       )}
 
       {importModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1rem' }}>
-          <div style={{ backgroundColor: t.bg, borderRadius: '1rem', padding: '1.5rem', maxWidth: '26rem', width: '100%', border: `1px solid ${t.border}`, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: t.text, marginBottom: '0.5rem' }}>Hangi mağazaya aktarılsın?</h3>
-            <p style={{ fontSize: '0.8125rem', color: t.textMuted, marginBottom: '1rem' }}>
-              "{importModal.title}" — mağaza bazlı stok kaydı bu mağaza için oluşturulacak
-              {importModal.inventoryQuantity != null && <> (başlangıç stoğu: <strong>{importModal.inventoryQuantity}</strong> — Shopify'daki mevcut adet)</>}.
-            </p>
-            {magazalar.length === 0 ? (
-              <div style={{ fontSize: '0.8125rem', color: '#eb5757', marginBottom: '1rem' }}>⚠ Önce Mağaza Yönetimi'nden en az bir mağaza ekleyin.</div>
-            ) : (
-              <select
-                value={importMagazaId}
-                onChange={e => setImportMagazaId(e.target.value)}
-                style={{ width: '100%', border: `1px solid ${t.border}`, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', backgroundColor: t.input, color: t.text, outline: 'none', marginBottom: '1.25rem' }}
-              >
-                {magazalar.map(m => <option key={m.id} value={m.id}>{m.ikon || '🏪'} {m.ad}</option>)}
-              </select>
-            )}
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button
-                onClick={() => setImportModal(null)}
-                style={{ flex: 1, padding: '0.625rem 1.25rem', border: `1px solid ${t.border}`, borderRadius: '0.5rem', fontWeight: 500, color: t.textMuted, backgroundColor: t.card, cursor: 'pointer' }}
-              >
-                İptal
-              </button>
-              <button
-                onClick={confirmImport}
-                disabled={!importMagazaId || importing[importModal.shopifyId]}
-                style={{ flex: 1, padding: '0.625rem 1.25rem', backgroundColor: t.accent, color: 'white', borderRadius: '0.5rem', fontWeight: 500, cursor: importMagazaId ? 'pointer' : 'not-allowed', opacity: importMagazaId ? 1 : 0.6 }}
-              >
-                {importing[importModal.shopifyId] ? 'Aktarılıyor...' : '➕ Aktar'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <Modal title="Hangi mağazaya aktarılsın?" onClose={() => setImportModal(null)}
+          footer={<>
+            <Button variant="plain" onClick={() => setImportModal(null)}>Vazgeç</Button>
+            <Button variant="primary" icon={Download} onClick={confirmImport} disabled={!importMagazaId} loading={importing[importModal.shopifyId]}>
+              {importing[importModal.shopifyId] ? 'Aktarılıyor…' : 'Ürünü aktar'}
+            </Button>
+          </>}>
+          <p style={{ fontSize: 13, lineHeight: '20px' }}>
+            <strong>{importModal.title}</strong> için mağaza bazlı stok kaydı bu mağazada oluşturulacak
+            {importModal.inventoryQuantity != null && <> (başlangıç stoğu: <strong>{importModal.inventoryQuantity}</strong>, Shopify'daki mevcut adet)</>}.
+          </p>
+          {magazalar.length === 0 ? (
+            <Banner tone="warning">Önce Mağazalar sayfasından en az bir mağaza ekleyin.</Banner>
+          ) : (
+            <Field label="Mağaza" htmlFor="imp-magaza">
+              <Select id="imp-magaza" value={importMagazaId} onChange={e => setImportMagazaId(e.target.value)}>
+                {magazalar.map(m => <option key={m.id} value={m.id}>{m.ad}</option>)}
+              </Select>
+            </Field>
+          )}
+        </Modal>
       )}
     </div>
   )

@@ -3,10 +3,12 @@ import { satislariGetir, iadeOlustur } from '../api'
 import { para, tarihFormat, ODEME_TIPLERI, FIS_CSS } from './utils'
 import QzFisPaneli from './QzFisPaneli'
 import { usePrint } from '../print/usePrint'
+import { Page, PageHeader, Card, Button, Field, Input, Textarea, Segmented, Badge, Banner, EmptyState, LoadingRows, toast } from '../ui'
+import { Search, ArrowLeft, Undo2, Plus, CircleCheck } from 'lucide-react'
 
 const normalize = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '')
 
-export default function IadeEkrani({ t, magazalar, magazaAd }) {
+export default function IadeEkrani({ magazaAd }) {
   const [aramaQ, setAramaQ]         = useState('')
   const [aramaTip, setAramaTip]     = useState('fis')   // 'fis' | 'urun'
   const [sonuclar, setSonuclar]     = useState([])
@@ -18,12 +20,13 @@ export default function IadeEkrani({ t, magazalar, magazaAd }) {
   const [notlar, setNotlar]         = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [basarili, setBasarili]     = useState(null)
+  const [arandi, setArandi]         = useState(false)
   const print = usePrint()
 
   const NEDENLER = [
-    { id:'musteri_istegi', label:'Müşteri İsteği' },
-    { id:'urun_hatali',    label:'Ürün Hatalı/Bozuk' },
-    { id:'beden_uyumsuz', label:'Beden/Numara Uyumsuz' },
+    { id:'musteri_istegi', label:'Müşteri isteği' },
+    { id:'urun_hatali',    label:'Ürün hatalı/bozuk' },
+    { id:'beden_uyumsuz', label:'Beden/numara uyumsuz' },
     { id:'diger',          label:'Diğer' },
   ]
 
@@ -32,6 +35,7 @@ export default function IadeEkrani({ t, magazalar, magazaAd }) {
     setYukleniyor(true)
     setSonuclar([])
     setSecilenSatis(null)
+    setArandi(true)
     try {
       let data = []
       if (aramaTip === 'fis') {
@@ -50,7 +54,7 @@ export default function IadeEkrani({ t, magazalar, magazaAd }) {
       }
       setSonuclar(data)
     } catch(e) {
-      alert('Arama hatası: ' + e.message)
+      toast.error('Arama yapılamadı: ' + e.message)
     } finally {
       setYukleniyor(false)
     }
@@ -88,8 +92,8 @@ export default function IadeEkrani({ t, magazalar, magazaAd }) {
 
   const iadeOlusturFn = async () => {
     const seciliKalemler = iadeKalemleri.filter(k => k.secili).map(k => ({...k, iadeAdet: k.iadeAdet||1}))
-    if (seciliKalemler.length === 0) return alert('En az bir ürün seçin.')
-    if (!iadeTip) return alert('İade ödeme tipi seçin.')
+    if (seciliKalemler.length === 0) return toast.warning('En az bir ürün seçin.')
+    if (!iadeTip) return toast.warning('İade ödeme tipini seçin.')
 
     setKaydediliyor(true)
     try {
@@ -133,8 +137,10 @@ export default function IadeEkrani({ t, magazalar, magazaAd }) {
       setSecilenSatis(null)
       setSonuclar([])
       setAramaQ('')
+      setArandi(false)
+      toast.success(`${iadeNo} numaralı iade oluşturuldu.`)
     } catch(e) {
-      alert('İade hatası: ' + e.message)
+      toast.error('İade oluşturulamadı: ' + e.message)
     } finally {
       setKaydediliyor(false)
     }
@@ -181,225 +187,141 @@ export default function IadeEkrani({ t, magazalar, magazaAd }) {
     win.document.close()
   }
 
-  return (
-    <div className="vega-page-pad" style={{padding:'24px 28px', maxWidth:900}}>
-      <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:t.text,marginBottom:6}}>İade Al</div>
-      <div style={{fontSize:13,color:t.textMuted,marginBottom:24}}>Fiş numarası veya ürün adıyla satışı bulun</div>
+  const IADE_TIPLERI = ODEME_TIPLERI.filter(o=>!['taksit','veresiye'].includes(o.id))
+  const odemeEtiketi = o => o.tip==='nakit'?'Nakit':o.tip==='kart'?'Kart':o.tip==='taksit'?`${o.taksitSayisi||2} taksit`:o.tip==='veresiye'?'Veresiye':'Havale'
 
-      {/* Başarı mesajı */}
+  return (
+    <Page style={{ maxWidth: 960 }}>
+      <PageHeader title="İade al" subtitle="Satışı fiş numarası ya da ürün adıyla bulun." />
+
       {basarili && (
-        <div style={{marginBottom:20,padding:'16px 20px',background:'rgba(111,207,151,.1)',border:'1px solid rgba(111,207,151,.3)',borderRadius:12}}>
-          <div style={{fontSize:15,fontWeight:600,color:'#6fcf97',marginBottom:4}}>✓ İade başarıyla oluşturuldu</div>
-          <div style={{fontSize:13,color:t.textMuted}}>İade No: <strong style={{color:t.text}}>{basarili.iadeNo}</strong> · Tutar: <strong style={{color:t.accent}}>{para(basarili.tutar)}</strong></div>
-          <div style={{fontSize:12,color:t.textMuted,marginTop:4}}>İade onay için beklemede — Yönetici onaylaması gerekiyor.</div>
-          <button onClick={()=>setBasarili(null)} style={{marginTop:10,padding:'7px 16px',borderRadius:8,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:12}}>
-            Yeni İade
-          </button>
-          {/* Termal fiş yazıcısına doğrudan ESC/POS; QZ Tray bağlı değilse
-              paneldeki "Tarayıcıdan" butonu yedek yol olarak duruyor. */}
-          <QzFisPaneli t={t} yazdir={print.iadeFisiYazdir} veri={basarili}
-            etiket="🖨 QZ ile Fiş Bas" tarayicidanYazdir={tarayicidanYazdir} />
-        </div>
+        <Card>
+          <div className="vg-stack">
+            <Banner tone="success" icon={CircleCheck} title="İade oluşturuldu.">
+              İade no <strong className="vg-code">{basarili.iadeNo}</strong> · tutar <strong className="vg-num">{para(basarili.tutar)}</strong>. Yönetici onayı bekleniyor.
+            </Banner>
+            {/* Termal fiş yazıcısına doğrudan ESC/POS; QZ Tray bağlı değilse
+                paneldeki "Tarayıcıdan" butonu yedek yol olarak duruyor. */}
+            <QzFisPaneli yazdir={print.iadeFisiYazdir} veri={basarili} etiket="QZ ile fiş bas" tarayicidanYazdir={tarayicidanYazdir} />
+            <div><Button variant="primary" icon={Plus} onClick={()=>setBasarili(null)}>Yeni iade</Button></div>
+          </div>
+        </Card>
       )}
 
       {!basarili && (
         <>
-          {/* Arama */}
-          <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20,marginBottom:20}}>
-            <div style={{display:'flex',gap:8,marginBottom:14}}>
-              {[['fis','🧾 Fiş No'],['urun','📦 Ürün Adı']].map(([k,l])=>(
-                <button key={k} onClick={()=>setAramaTip(k)} style={{padding:'8px 16px',borderRadius:20,fontSize:12,
-                  background:aramaTip===k?t.accentBg:t.input,border:`1px solid ${aramaTip===k?t.accent+'55':t.border}`,
-                  color:aramaTip===k?t.accent:t.textMuted}}>{l}</button>
-              ))}
-            </div>
-            <div style={{display:'flex',gap:10}}>
-              <input value={aramaQ} onChange={e=>setAramaQ(e.target.value)}
-                onKeyDown={e=>e.key==='Enter'&&ara()}
-                placeholder={aramaTip==='fis'?'F-0001':'Ürün adı yazın...'}
-                style={{flex:1,padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
-              <button onClick={ara} disabled={yukleniyor} style={{padding:'10px 24px',borderRadius:10,background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:600}}>
-                {yukleniyor?'Aranıyor...':'🔍 Ara'}
-              </button>
-            </div>
-          </div>
-
-          {/* Sonuçlar */}
-          {sonuclar.length > 0 && !secilenSatis && (
-            <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,overflow:'hidden',marginBottom:20}}>
-              <div style={{padding:'14px 18px',borderBottom:`1px solid ${t.border}`,fontSize:12,color:t.textMuted}}>
-                {sonuclar.length} satış bulundu
-              </div>
-              <div className="vega-scroll-x">
-              <table style={{width:'100%',borderCollapse:'collapse'}}>
-                <thead><tr style={{borderBottom:`1px solid ${t.border}`,background:t.hover}}>
-                  {['Fiş No','Tarih','Mağaza','Müşteri','Toplam','Seç'].map(h=>(
-                    <th key={h} style={{padding:'10px 14px',fontSize:10,color:t.textMuted,fontWeight:500,textAlign:'left'}}>{h}</th>
-                  ))}
-                </tr></thead>
-                <tbody>
-                  {sonuclar.map(s=>(
-                    <tr key={s.id} style={{borderBottom:`1px solid ${t.border}`}}>
-                      <td style={{padding:'10px 14px',fontSize:12,color:t.accent,fontFamily:'monospace',fontWeight:600}}>{s.fisNo}</td>
-                      <td style={{padding:'10px 14px',fontSize:11,color:t.textMuted}}>{tarihFormat(s.tarih)}</td>
-                      <td style={{padding:'10px 14px',fontSize:12,color:t.text}}>{s.magaza?.ad||s.magaza||'—'}</td>
-                      <td style={{padding:'10px 14px',fontSize:12,color:t.text}}>{s.musteri?.ad||s.musteriAd||'—'}</td>
-                      <td style={{padding:'10px 14px',fontSize:13,fontWeight:600,color:t.accent}}>{para(s.genelToplam)}</td>
-                      <td style={{padding:'10px 14px'}}>
-                        <button onClick={()=>satisSec(s)} style={{padding:'6px 14px',borderRadius:8,background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:12,fontWeight:600}}>
-                          Seç
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
-            </div>
-          )}
-
-          {sonuclar.length === 0 && aramaQ && !yukleniyor && (
-            <div style={{padding:30,textAlign:'center',color:t.textMuted,background:t.card,border:`1px solid ${t.border}`,borderRadius:14,marginBottom:20}}>
-              Sonuç bulunamadı
-            </div>
-          )}
-
-          {/* İade formu */}
-          {secilenSatis && (
-            <div style={{display:'flex',flexDirection:'column',gap:16}}>
-              {/* Satış özeti */}
-              <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:18}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                  <div>
-                    <div style={{fontSize:15,fontWeight:600,color:t.text}}>Fiş: {secilenSatis.fisNo}</div>
-                    <div style={{fontSize:12,color:t.textMuted}}>{tarihFormat(secilenSatis.tarih)} · {secilenSatis.magaza?.ad||secilenSatis.magaza||'—'}</div>
-                  </div>
-                  <button onClick={()=>setSecilenSatis(null)} style={{padding:'6px 12px',borderRadius:8,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:12}}>
-                    ← Geri
-                  </button>
+          {!secilenSatis && (
+            <div className="vg-card vg-pad vg-stack" style={{ gap: 10 }}>
+              <Segmented label="Arama tipi" value={aramaTip} onChange={setAramaTip} options={[{ value:'fis', label:'Fiş no' }, { value:'urun', label:'Ürün adı' }]} />
+              <div className="vg-row" style={{ flexWrap: 'nowrap' }}>
+                <div className="vg-input-group" style={{ flex: 1 }}>
+                  <Search className="vg-icon" />
+                  <Input value={aramaQ} onChange={e=>setAramaQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ara()} mono={aramaTip==='fis'}
+                    placeholder={aramaTip==='fis'?'F-0001':'Ürün adı'} aria-label="İade için satış ara" style={{ paddingLeft: 32 }} />
                 </div>
-                {/* Orijinal ödeme bilgisi */}
+                <Button variant="primary" icon={Search} onClick={ara} loading={yukleniyor}>{yukleniyor?'Aranıyor…':'Ara'}</Button>
+              </div>
+            </div>
+          )}
+
+          {yukleniyor && <LoadingRows rows={4} />}
+
+          {sonuclar.length > 0 && !secilenSatis && (
+            <div className="vg-table-wrap">
+              <div className="vg-table-toolbar"><span className="vg-muted" style={{ fontSize: 13 }}>{sonuclar.length} satış bulundu</span></div>
+              <div className="vg-table-scroll">
+                <table className="vg-table" style={{ minWidth: 640 }}>
+                  <thead><tr><th>Fiş no</th><th>Tarih</th><th>Mağaza</th><th>Müşteri</th><th className="is-num">Toplam</th><th></th></tr></thead>
+                  <tbody>
+                    {sonuclar.map(s=>(
+                      <tr key={s.id} className="is-clickable" onClick={()=>satisSec(s)}>
+                        <td className="vg-code is-strong">{s.fisNo}</td>
+                        <td className="vg-nowrap vg-muted">{tarihFormat(s.tarih)}</td>
+                        <td>{s.magaza?.ad||s.magaza||'—'}</td>
+                        <td>{s.musteri?.ad||s.musteriAd||'—'}</td>
+                        <td className="is-num is-strong">{para(s.genelToplam)}</td>
+                        <td><Button size="sm" onClick={e=>{e.stopPropagation();satisSec(s)}}>Seç</Button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {sonuclar.length === 0 && arandi && aramaQ && !yukleniyor && !secilenSatis && (
+            <div className="vg-card"><EmptyState title={`"${aramaQ}" ile eşleşen satış yok`} text="Fiş numarasını kontrol edin ya da ürün adıyla arayın." /></div>
+          )}
+
+          {secilenSatis && (
+            <>
+              <Card title={<>Fiş <span className="vg-code">{secilenSatis.fisNo}</span></>} subtitle={`${tarihFormat(secilenSatis.tarih)} · ${secilenSatis.magaza?.ad||secilenSatis.magaza||'—'}`}
+                action={<Button size="sm" variant="plain" icon={ArrowLeft} onClick={()=>setSecilenSatis(null)}>Geri</Button>} bodyClassName="vg-stack">
                 {(secilenSatis.odemeler||[]).length>0&&(
-                  <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
-                    <span style={{fontSize:10,color:t.textMuted,alignSelf:'center'}}>Orijinal ödeme:</span>
+                  <div className="vg-row" style={{ gap: 6 }}>
+                    <span className="vg-help">Orijinal ödeme</span>
                     {secilenSatis.odemeler.map((o,i)=>(
-                      <span key={i} style={{fontSize:11,padding:'3px 10px',borderRadius:20,
-                        background:o.tip==='nakit'?'rgba(111,207,151,.12)':o.tip==='kart'||o.tip==='taksit'?'rgba(86,204,242,.12)':'rgba(187,135,252,.12)',
-                        color:o.tip==='nakit'?'#6fcf97':o.tip==='kart'||o.tip==='taksit'?'#56ccf2':'#bb87fc',fontWeight:600}}>
-                        {o.tip==='nakit'?'💵 Nakit':o.tip==='kart'?'💳 Kart':o.tip==='taksit'?`💳 ${o.taksitSayisi||2} Taksit`:'🏦 Havale'} · ₺{Number(o.tutar).toLocaleString('tr-TR')}
-                      </span>
+                      <Badge key={i} tone={o.tip==='nakit'?'success':o.tip==='kart'||o.tip==='taksit'?'info':'violet'}>{odemeEtiketi(o)} · {para(o.tutar)}</Badge>
                     ))}
                   </div>
                 )}
 
-                {/* Kalem seçimi */}
-                <div style={{fontSize:11,color:t.textMuted,marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>İade Edilecek Ürünler</div>
-                <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                  {iadeKalemleri.map((k,i)=>(
-                    <div key={i} style={{
-                      display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderRadius:10,
-                      background:k.secili?t.accentBg:t.hover,border:`1px solid ${k.secili?t.accent+'44':t.border}`
-                    }}>
-                      <div onClick={()=>!k.tamIadeEdildi&&kalemGuncelle(i,'secili',!k.secili)} style={{
-                        width:20,height:20,borderRadius:6,cursor:k.tamIadeEdildi?'not-allowed':'pointer',flexShrink:0,
-                        background:k.tamIadeEdildi?'#333':k.secili?t.accent:t.input,border:`1px solid ${t.border}`,
-                        display:'flex',alignItems:'center',justifyContent:'center',opacity:k.tamIadeEdildi?0.4:1}}>
-                        {k.secili&&!k.tamIadeEdildi&&<span style={{fontSize:11,color:'#111',fontWeight:700}}>✓</span>}
-                        {k.tamIadeEdildi&&<span style={{fontSize:11,color:'#666'}}>—</span>}
-                      </div>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:13,color:t.text,fontWeight:500}}>{k.urunAd}</div>
-                        <div style={{fontSize:11,color:t.textMuted}}>{k.renk}{k.beden?` / ${k.beden}`:''} · {k.adet} adet · {para(k.birimFiyat)}</div>
-                        {k.barkod&&<div style={{fontSize:9,color:t.textMuted,fontFamily:'monospace',marginTop:1}}>#{k.barkod}</div>}
-                        {k.tamIadeEdildi&&<div style={{fontSize:10,color:'#eb5757',marginTop:2}}>⚠ Bu kalem daha önce iade edildi</div>}
-                      </div>
-                      {k.secili && (
-                        <div style={{display:'flex',alignItems:'center',gap:8}}>
-                          <span style={{fontSize:12,color:t.textMuted}}>İade:</span>
-                          <input type="number" min={1} max={k.adet} value={k.iadeAdet||1}
-                            onChange={e=>kalemGuncelle(i,'iadeAdet',Math.min(k.adet,Math.max(1,parseInt(e.target.value)||1)))}
-                            style={{width:60,padding:'5px 8px',borderRadius:8,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,textAlign:'center',outline:'none'}}/>
-                          <span style={{fontSize:12,color:t.textMuted}}>/ {k.adet} adet</span>
-                          <span style={{fontSize:12,color:t.textMuted}}>@</span>
-                          <input type="number" min={0} step="0.01" value={k.birimFiyat}
-                            onChange={e=>kalemGuncelle(i,'birimFiyat',Math.max(0,parseFloat(e.target.value)||0))}
-                            style={{width:80,padding:'5px 8px',borderRadius:8,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,textAlign:'center',outline:'none'}}/>
-                          <span style={{fontSize:13,fontWeight:600,color:t.accent,minWidth:80,textAlign:'right'}}>
-                            {para((k.iadeAdet||1)*Number(k.birimFiyat))}
+                <div>
+                  <div className="vg-section-label" style={{ marginBottom: 6 }}>İade edilecek ürünler</div>
+                  <div className="vg-stack" style={{ gap: 6 }}>
+                    {iadeKalemleri.map((k,i)=>(
+                      <div key={i} className="vg-tile vg-row" style={{ flexWrap: 'wrap', gap: 12, boxShadow: k.secili ? 'inset 0 0 0 2px var(--accent)' : undefined, background: k.secili ? 'var(--accent-soft)' : undefined, opacity: k.tamIadeEdildi ? .6 : 1 }}>
+                        <label className="vg-check" style={{ flex: 1, minWidth: 220, cursor: k.tamIadeEdildi ? 'not-allowed' : 'pointer' }}>
+                          <input type="checkbox" checked={!!k.secili} disabled={k.tamIadeEdildi} onChange={()=>!k.tamIadeEdildi&&kalemGuncelle(i,'secili',!k.secili)} />
+                          <span>
+                            <span style={{ fontWeight: 500 }}>{k.urunAd}</span>
+                            <span className="vg-list__secondary" style={{ display: 'block' }}>{k.renk}{k.beden?` / ${k.beden}`:''} · {k.adet} adet · {para(k.birimFiyat)}{k.barkod && <span className="vg-code"> · {k.barkod}</span>}</span>
+                            {k.tamIadeEdildi && <Badge tone="critical" size="sm">Daha önce iade edildi</Badge>}
                           </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        </label>
+                        {k.secili && (
+                          <div className="vg-row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                            <Input size="sm" type="number" min={1} max={k.adet} className="vg-num" value={k.iadeAdet||1} aria-label="İade adedi"
+                              onChange={e=>kalemGuncelle(i,'iadeAdet',Math.min(k.adet,Math.max(1,parseInt(e.target.value)||1)))} style={{ width: 60, textAlign: 'center' }} />
+                            <span className="vg-muted" style={{ fontSize: 12 }}>/ {k.adet} ×</span>
+                            <Input size="sm" type="number" min={0} step="0.01" className="vg-num" value={k.birimFiyat} aria-label="Birim fiyat"
+                              onChange={e=>kalemGuncelle(i,'birimFiyat',Math.max(0,parseFloat(e.target.value)||0))} style={{ width: 92, textAlign: 'right' }} />
+                            <strong className="vg-num" style={{ minWidth: 90, textAlign: 'right' }}>{para((k.iadeAdet||1)*Number(k.birimFiyat))}</strong>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </Card>
 
-              {/* İade detayları */}
               {iadeKalemleri.some(k=>k.secili) && (
-                <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:18}}>
-                  <div style={{fontSize:11,color:t.textMuted,marginBottom:14,textTransform:'uppercase',letterSpacing:.5}}>İade Detayları</div>
-                  
-                  <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
-                    {/* Neden */}
-                    <div>
-                      <div style={{fontSize:11,color:t.textMuted,marginBottom:8,textTransform:'uppercase',letterSpacing:.5}}>İade Nedeni</div>
-                      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <Card title="İade detayları" bodyClassName="vg-stack">
+                  <div className="vg-grid-2">
+                    <Field label="İade nedeni">
+                      <div className="vg-stack" style={{ gap: 4 }}>
                         {NEDENLER.map(n=>(
-                          <button key={n.id} onClick={()=>setNeden(n.id)} style={{
-                            padding:'8px 12px',borderRadius:8,textAlign:'left',fontSize:12,
-                            background:neden===n.id?t.accentBg:t.input,
-                            border:`1px solid ${neden===n.id?t.accent+'55':t.border}`,
-                            color:neden===n.id?t.accent:t.textMuted}}>
-                            {neden===n.id?'● ':''}{n.label}
-                          </button>
+                          <label key={n.id} className="vg-check"><input type="radio" name="iade-neden" checked={neden===n.id} onChange={()=>setNeden(n.id)} />{n.label}</label>
                         ))}
                       </div>
-                    </div>
-
-                    {/* Ödeme tipi */}
-                    <div>
-                      <div style={{fontSize:11,color:t.textMuted,marginBottom:8,textTransform:'uppercase',letterSpacing:.5}}>İade Ödeme Tipi</div>
-                      <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                        {ODEME_TIPLERI.filter(o=>o.id!=='taksit').map(o=>(
-                          <button key={o.id} onClick={()=>setIadeTip(o.id)} style={{
-                            padding:'8px 12px',borderRadius:8,textAlign:'left',fontSize:12,
-                            background:iadeTip===o.id?`${o.renk}18`:t.input,
-                            border:`1px solid ${iadeTip===o.id?o.renk+'55':t.border}`,
-                            color:iadeTip===o.id?o.renk:t.textMuted}}>
-                            {o.ikon} {o.label}
-                          </button>
+                    </Field>
+                    <Field label="İade ödeme tipi">
+                      <div className="vg-stack" style={{ gap: 4 }}>
+                        {IADE_TIPLERI.map(o=>(
+                          <label key={o.id} className="vg-check"><input type="radio" name="iade-tip" checked={iadeTip===o.id} onChange={()=>setIadeTip(o.id)} /><o.ikon className="vg-icon" style={{ width: 14, height: 14, color: 'var(--ink-muted)' }} />{o.label}</label>
                         ))}
                       </div>
-                    </div>
+                    </Field>
                   </div>
-
-                  {/* Not */}
-                  <div style={{marginBottom:16}}>
-                    <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Not</div>
-                    <textarea value={notlar} onChange={e=>setNotlar(e.target.value)} rows={2} placeholder="İsteğe bağlı not..."
-                      style={{width:'100%',padding:'9px 12px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none',resize:'vertical'}}/>
-                  </div>
-
-                  {/* Toplam ve kaydet */}
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 18px',
-                    background:t.hover,borderRadius:10,marginBottom:14}}>
-                    <div style={{fontSize:13,color:t.textMuted}}>İade Tutarı</div>
-                    <div style={{fontSize:22,fontWeight:700,color:t.accent}}>{para(toplamIade)}</div>
-                  </div>
-
-                  <button onClick={iadeOlusturFn} disabled={kaydediliyor||toplamIade===0} style={{
-                    width:'100%',padding:'13px 0',borderRadius:12,fontSize:14,fontWeight:700,
-                    background:toplamIade>0?'rgba(111,207,151,.15)':t.input,
-                    border:`1px solid ${toplamIade>0?'rgba(111,207,151,.4)':t.border}`,
-                    color:toplamIade>0?'#6fcf97':t.textMuted}}>
-                    {kaydediliyor?'İşleniyor...':'✓ İadeyi Oluştur'}
-                  </button>
-                </div>
+                  <Field label="Not" help="İsteğe bağlı" htmlFor="iade-not"><Textarea id="iade-not" value={notlar} onChange={e=>setNotlar(e.target.value)} rows={2} /></Field>
+                  <div className="vg-kv vg-kv--total"><span>İade tutarı</span><span style={{ fontSize: 20 }}>{para(toplamIade)}</span></div>
+                  <Button variant="primary" size="lg" icon={Undo2} block onClick={iadeOlusturFn} disabled={toplamIade===0} loading={kaydediliyor}>{kaydediliyor?'İşleniyor…':'İadeyi oluştur'}</Button>
+                </Card>
               )}
-            </div>
+            </>
           )}
         </>
       )}
-    </div>
+    </Page>
   )
 }

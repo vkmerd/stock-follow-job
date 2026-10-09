@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
 import * as api from './api'
+import { Page, PageHeader, Card, Button, Input, Select, SearchInput, Tabs, Segmented, Badge, StatCard, Tile, Progress, EmptyState, LoadingRows, BarChart, toast } from './ui'
+import { Download, X, Store } from 'lucide-react'
 // Rapor verisi backend'den aggregate olarak geliyor - ham veri değil
 
 const para = v => `₺${Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const paraKisa = v => `₺${Number(v || 0).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`
 const tarihTR = iso => iso ? new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
 
 // ─── XLSX EXPORT ──────────────────────────────────────────────
 const xlsxExport = (rows, baslik, dosyaAd) => {
-  if (!rows.length) return alert('Dışa aktarılacak veri yok')
+  if (!rows.length) return toast.warning('Dışa aktarılacak veri yok.')
   const esc = v => String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const cols = Object.keys(rows[0])
   const xml = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
@@ -18,35 +21,52 @@ const xlsxExport = (rows, baslik, dosyaAd) => {
   const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' })
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
   a.download = `${dosyaAd}.xls`; a.click()
+  toast.success(`${baslik} Excel'e aktarıldı.`)
 }
 
 // ─── TARIH ARALIK SEÇİCİ ─────────────────────────────────────
-function TarihAralik({ baslangic, bitis, onChange, t }) {
+function TarihAralik({ baslangic, bitis, onChange }) {
   const bugun = new Date().toISOString().slice(0, 10)
   const hazir = [
     { l: 'Bugün',     b: bugun, e: bugun },
-    { l: 'Bu Hafta',  b: new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10), e: bugun },
-    { l: 'Bu Ay',     b: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), e: bugun },
-    { l: 'Geçen Ay',  b: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0, 10), e: new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().slice(0, 10) },
-    { l: 'Bu Yıl',    b: new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10), e: bugun },
+    { l: 'Son 7 gün', b: new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10), e: bugun },
+    { l: 'Bu ay',     b: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), e: bugun },
+    { l: 'Geçen ay',  b: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0, 10), e: new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().slice(0, 10) },
+    { l: 'Bu yıl',    b: new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10), e: bugun },
   ]
-  const inp = { padding: '8px 12px', borderRadius: 8, background: t.input, border: `1px solid ${t.border}`, color: t.text, fontSize: 12, outline: 'none' }
+  const secili = hazir.find(h => h.b === baslangic && h.e === bitis)?.l || ''
   return (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-      {hazir.map(h => (
-        <button key={h.l} onClick={() => onChange(h.b, h.e)} style={{ padding: '7px 14px', borderRadius: 20, fontSize: 12, background: baslangic === h.b && bitis === h.e ? t.accentBg : 'transparent', border: `1px solid ${baslangic === h.b && bitis === h.e ? t.accent + '55' : t.border}`, color: baslangic === h.b && bitis === h.e ? t.accent : t.textMuted }}>{h.l}</button>
-      ))}
-      <div className="vega-daterange-dates" style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 'auto' }}>
-        <input type="date" value={baslangic} onChange={e => onChange(e.target.value, bitis)} style={inp} />
-        <span style={{ color: t.textMuted, fontSize: 12 }}>—</span>
-        <input type="date" value={bitis} onChange={e => onChange(baslangic, e.target.value)} style={inp} />
+    <div className="vg-row">
+      <Segmented label="Dönem" value={secili} onChange={l => { const h = hazir.find(x => x.l === l); onChange(h.b, h.e) }} options={hazir.map(h => h.l)} />
+      <div className="vg-row" style={{ gap: 6, marginLeft: 'auto', flexWrap: 'nowrap' }}>
+        <Input size="sm" type="date" value={baslangic} onChange={e => onChange(e.target.value, bitis)} aria-label="Başlangıç" />
+        <span className="vg-muted">–</span>
+        <Input size="sm" type="date" value={bitis} onChange={e => onChange(baslangic, e.target.value)} aria-label="Bitiş" />
       </div>
-
     </div>
   )
 }
 
-export default function Raporlar({ t }) {
+const IADE_DURUM = { onaylandi: ['success', 'Onaylandı'], reddedildi: ['critical', 'Reddedildi'] }
+
+function SiraliListe({ satirlar, bos = 'Veri yok' }) {
+  if (!satirlar.length) return <EmptyState compact title={bos} />
+  return (
+    <ul className="vg-list">
+      {satirlar.map(s => (
+        <li key={s.key} className="vg-list__item" style={{ padding: '8px 0' }}>
+          <div className="vg-list__main">
+            <div className="vg-list__primary">{s.ad}</div>
+            {s.alt && <div className="vg-list__secondary">{s.alt}</div>}
+          </div>
+          <div className="vg-list__value">{s.deger}</div>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export default function Raporlar() {
   const bugun = new Date().toISOString().slice(0, 10)
   const ayBasi = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10)
 
@@ -63,7 +83,6 @@ export default function Raporlar({ t }) {
   // Filtreler
   const [filtreMarka, setFiltreMarka]     = useState('')
   const [filtreMagaza, setFiltreMagaza]   = useState('')
-  const [hizliTarih, setHizliTarih]       = useState('bu_ay')
   const [filtreRenk, setFiltreRenk]       = useState('')
   const [filtreMalzeme, setFiltreMalzeme] = useState('')
   const [filtrePersonel, setFiltrePersonel] = useState('')
@@ -154,7 +173,18 @@ export default function Raporlar({ t }) {
     return acc
   }, {})).sort((a, b) => a[0].localeCompare(b[0]))
 
-  const maxGunCiro = Math.max(...gunBazli.map(g => g[1]), 1)
+  // Mağaza bazlı
+  const magazaBazli = Object.entries(satislar.reduce((acc,s)=>{
+    const m=typeof s.magaza==='object'?s.magaza?.ad:s.magaza||'Belirtilmemiş'
+    if(!acc[m]) acc[m]={ad:m,ciro:0,sayi:0}
+    acc[m].ciro+=Number(s.genelToplam||0)
+    acc[m].sayi++
+    return acc
+  },{})).sort((a,b)=>b[1].ciro-a[1].ciro)
+
+  const musteriSatis = satislar.filter(s=>s.musteriId)
+  const alisverisYapan = [...new Set(musteriSatis.map(s=>s.musteriId))].length
+  const masrafToplam = masraflar.reduce((t,m)=>t+Number(m.tutar||0),0)
 
   // Excel satış detay
   const satisExcel = () => {
@@ -189,481 +219,310 @@ export default function Raporlar({ t }) {
   }
 
   const TABS = [
-    { id: 'satis',    l: '📊 Satış Detayı' },
-    { id: 'urun',     l: '📦 Ürün Analizi' },
-    { id: 'personel', l: '👤 Personel' },
-    { id: 'grafik',   l: '📈 Grafik' },
-    { id: 'iade',     l: '↩ İadeler' },
-    { id: 'masraf',   l: '💸 Masraflar' },
-    { id: 'musteri',  l: '👥 Müşteri Analizi' },
-    { id: 'magaza',   l: '🏪 Mağaza Bazlı' },
+    { id: 'satis',    label: 'Satış detayı' },
+    { id: 'urun',     label: 'Ürün analizi' },
+    { id: 'personel', label: 'Personel' },
+    { id: 'grafik',   label: 'Grafik' },
+    { id: 'iade',     label: 'İadeler' },
+    { id: 'masraf',   label: 'Masraflar' },
+    { id: 'musteri',  label: 'Müşteri analizi' },
+    { id: 'magaza',   label: 'Mağaza bazlı' },
   ]
 
-  const Kart = ({ l, v, c = t.accent }) => (
-    <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: '16px 18px' }}>
-      <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: .5 }}>{l}</div>
-      <div style={{ fontSize: 20, fontFamily: "'Playfair Display',serif", fontWeight: 700, color: c }}>{v}</div>
-    </div>
-  )
+  const filtreVar = filtreMarka || filtreRenk || filtreMalzeme || filtrePersonel || filtreKategori
 
   return (
-    <div className="vega-page-pad" style={{ padding: '22px 28px' }}>
-      <style>{`
-        .vega-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-        .vega-scroll-x table{min-width:640px;}
-        .vega-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap!important;}
-        .vega-tabs button{white-space:nowrap;flex-shrink:0;}
-        @media (max-width:860px){
-          .vega-page-pad{padding-left:14px!important;padding-right:14px!important;}
-          .vega-grid-2,.vega-grid-3,.vega-grid-4{grid-template-columns:1fr!important;}
-        }
-        @media (max-width:600px){
-          .vega-header-row{flex-direction:column;align-items:stretch!important;}
-          .vega-header-actions{width:100%;}
-          .vega-header-actions button{flex:1;}
-          .vega-daterange-dates{margin-left:0!important;width:100%!important;justify-content:space-between!important;}
-          .vega-filter-input{width:auto!important;flex:1 1 140px!important;}
-        }
-      `}</style>
-      {/* Başlık */}
-      <div className="vega-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: t.text }}>Raporlar</div>
-        <div className="vega-header-actions" style={{ display: 'flex', gap: 8 }}>
-          <button onClick={satisExcel} style={{ padding: '9px 16px', borderRadius: 10, background: 'rgba(111,207,151,.1)', border: '1px solid rgba(111,207,151,.3)', color: '#6fcf97', fontSize: 13 }}>⬇ Satış Excel</button>
-          <button onClick={personelExcel} style={{ padding: '9px 16px', borderRadius: 10, background: 'rgba(187,135,252,.1)', border: '1px solid rgba(187,135,252,.3)', color: '#bb87fc', fontSize: 13 }}>⬇ Personel Excel</button>
-        </div>
+    <Page>
+      <PageHeader title="Raporlar" subtitle={`${tarihTR(baslangic)} – ${tarihTR(bitis)}`}
+        actions={<>
+          <Button icon={Download} onClick={satisExcel}>Satış Excel</Button>
+          <Button icon={Download} onClick={personelExcel}>Personel Excel</Button>
+        </>} />
+
+      <div className="vg-card vg-pad">
+        <TarihAralik baslangic={baslangic} bitis={bitis} onChange={(b, e) => { setBaslangic(b); setBitis(e) }} />
       </div>
 
-      {/* Tarih aralığı */}
-      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
-        <TarihAralik baslangic={baslangic} bitis={bitis} onChange={(b, e) => { setBaslangic(b); setBitis(e) }} t={t} />
-      </div>
-
-      {/* KPI */}
-      <div className="vega-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
-        <Kart l="Toplam Ciro"    v={para(toplamCiro)} />
-        <Kart l="Satış Sayısı"  v={satislar.length} c="#56ccf2" />
-        <Kart l="Satılan Adet"  v={toplamAdet} c="#6fcf97" />
-        <Kart l="Ort. Sepet"    v={para(toplamCiro / (satislar.length || 1))} c="#bb87fc" />
+      <div className="vg-grid-4">
+        <StatCard label="Toplam ciro" value={para(toplamCiro)} />
+        <StatCard label="Satış sayısı" value={satislar.length} />
+        <StatCard label="Satılan adet" value={toplamAdet} />
+        <StatCard label="Ortalama sepet" value={para(toplamCiro / (satislar.length || 1))} />
       </div>
 
       {/* Filtreler */}
-      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <div className="vg-card vg-pad vg-row" style={{ gap: 8 }}>
         {[
-          ['🏷 Marka', filtreMarka, setFiltreMarka],
-          ['🎨 Renk', filtreRenk, setFiltreRenk],
-          ['🧵 Malzeme', filtreMalzeme, setFiltreMalzeme],
-          ['📂 Kategori', filtreKategori, setFiltreKategori],
+          ['Marka', filtreMarka, setFiltreMarka],
+          ['Renk', filtreRenk, setFiltreRenk],
+          ['Malzeme', filtreMalzeme, setFiltreMalzeme],
+          ['Kategori', filtreKategori, setFiltreKategori],
         ].map(([ph, val, set]) => (
-          <input key={ph} className="vega-filter-input" value={val} onChange={e => set(e.target.value)} placeholder={ph}
-            style={{ padding: '7px 12px', borderRadius: 20, background: t.input, border: `1px solid ${val ? t.accent + '55' : t.border}`, color: t.text, fontSize: 12, outline: 'none', width: 150 }} />
+          <SearchInput key={ph} size="sm" value={val} onChange={e => set(e.target.value)} placeholder={ph} aria-label={`${ph} filtresi`} style={{ width: 150 }} />
         ))}
-        <select value={filtrePersonel} onChange={e => setFiltrePersonel(e.target.value)}
-          style={{ padding: '7px 12px', borderRadius: 20, background: t.input, border: `1px solid ${filtrePersonel ? t.accent + '55' : t.border}`, color: t.text, fontSize: 12, outline: 'none' }}>
-          <option value="">👤 Tüm Personel</option>
+        <Select size="sm" value={filtrePersonel} onChange={e => setFiltrePersonel(e.target.value)} aria-label="Personel" style={{ width: 'auto' }}>
+          <option value="">Tüm personel</option>
           {kullanicilar.map(k => <option key={k.id} value={k.id}>{k.ad} {k.soyad || ''}</option>)}
-        </select>
-        {(filtreMarka || filtreRenk || filtreMalzeme || filtrePersonel || filtreKategori) && (
-          <button onClick={() => { setFiltreMarka(''); setFiltreRenk(''); setFiltreMalzeme(''); setFiltrePersonel(''); setFiltreKategori('') }}
-            style={{ padding: '7px 14px', borderRadius: 20, background: 'rgba(235,87,87,.08)', border: '1px solid rgba(235,87,87,.2)', color: '#eb5757', fontSize: 12 }}>✕ Temizle</button>
+        </Select>
+        {filtreVar && (
+          <Button size="sm" variant="plain" icon={X} onClick={() => { setFiltreMarka(''); setFiltreRenk(''); setFiltreMalzeme(''); setFiltrePersonel(''); setFiltreKategori(''); setFiltreMagaza('') }}>Filtreleri temizle</Button>
         )}
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: t.textMuted, alignSelf: 'center' }}>{filtreli.length} kalem · {para(toplamFiltre)}</span>
+        <span className="vg-muted vg-num" style={{ marginLeft: 'auto', fontSize: 12 }}>{filtreli.length} kalem · {para(toplamFiltre)}</span>
       </div>
 
-      {/* Sekmeler */}
-      <div className="vega-tabs" style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        {TABS.map(tab => (
-          <button key={tab.id} onClick={() => setAktifTab(tab.id)} style={{ padding: '8px 18px', borderRadius: 20, fontSize: 12, background: aktifTab === tab.id ? t.accentBg : 'transparent', border: `1px solid ${aktifTab === tab.id ? t.accent + '55' : t.border}`, color: aktifTab === tab.id ? t.accent : t.textMuted }}>{tab.l}</button>
-        ))}
-      </div>
+      <Tabs items={TABS} value={aktifTab} onChange={setAktifTab} />
 
-      {yukleniyor && <div style={{ padding: 40, textAlign: 'center', color: t.textMuted }}>Yükleniyor...</div>}
+      {yukleniyor && <LoadingRows />}
 
       {/* SATIŞ DETAYI */}
       {!yukleniyor && aktifTab === 'satis' && (
-        <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, overflow: 'hidden' }}>
-          <div className="vega-scroll-x" style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
-              <thead><tr style={{ borderBottom: `1px solid ${t.border}`, background: t.hover }}>
-                {['Tarih', 'Fiş No', 'Ürün', 'Marka', 'Renk', 'Beden', 'Adet', 'Fiyat', 'İnd%', 'Toplam', 'Maliyet', 'Kar', 'Mağaza', 'Kasiyer'].map(h => (
-                  <th key={h} style={{ padding: '10px 12px', fontSize: 10, color: t.textMuted, fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {filtreli.slice(0, 200).map((k, i) => (
-                  <tr key={i} style={{ borderBottom: `1px solid ${t.border}` }}>
-                    <td style={{ padding: '9px 12px', fontSize: 11, color: t.textMuted, whiteSpace: 'nowrap' }}>{tarihTR(k.tarih)}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 11, color: t.textMuted, fontFamily: 'monospace' }}>{k.fisNo}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 12, color: t.text, fontWeight: 500 }}>{k.urunAd}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 11, color: t.textMuted }}>{k.marka || '—'}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 11, color: t.textMuted }}>{k.renk || '—'}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 11, color: t.textMuted }}>{k.beden || '—'}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 12, color: t.text, textAlign: 'center' }}>{k.adet}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 12, color: t.text }}>{para(k.birimFiyat)}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 11, color: k.indirim > 0 ? '#eb5757' : t.textMuted }}>{k.indirim > 0 ? `%${k.indirim}` : '—'}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 13, fontWeight: 700, color: t.accent }}>{para(k.toplam)}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 11, color: t.textMuted }}>{k.maliyet?para(k.maliyet*k.adet):'—'}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 12, fontWeight: 600, color: k.karMarji>0?'#6fcf97':'#eb5757' }}>{k.karMarji!=null?para(k.karMarji):'—'}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 11, color: t.textMuted }}>{k.magaza}</td>
-                    <td style={{ padding: '9px 12px', fontSize: 11, color: t.textMuted }}>{k.kasiyer}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {filtreli.length > 200 && <div style={{ padding: '12px 18px', fontSize: 12, color: t.textMuted, borderTop: `1px solid ${t.border}` }}>İlk 200 kayıt gösteriliyor. Tümünü görmek için Excel'e aktarın.</div>}
-          {filtreli.length === 0 && <div style={{ padding: 40, textAlign: 'center', color: t.textMuted }}>Seçilen kriterlere uygun satış bulunamadı</div>}
+        <div className="vg-table-wrap">
+          {filtreli.length === 0 ? <EmptyState title="Seçilen kriterlere uygun satış yok" text="Tarih aralığını genişletin ya da filtreleri temizleyin." /> : (
+            <div className="vg-table-scroll">
+              <table className="vg-table vg-table--compact" style={{ minWidth: 1100 }}>
+                <thead><tr>
+                  <th>Tarih</th><th>Fiş no</th><th>Ürün</th><th>Marka</th><th>Renk</th><th>Beden</th><th className="is-num">Adet</th><th className="is-num">Fiyat</th><th className="is-num">İnd.</th><th className="is-num">Toplam</th><th className="is-num">Maliyet</th><th className="is-num">Kâr</th><th>Mağaza</th><th>Kasiyer</th>
+                </tr></thead>
+                <tbody>
+                  {filtreli.slice(0, 200).map((k, i) => (
+                    <tr key={i}>
+                      <td className="vg-nowrap vg-muted">{tarihTR(k.tarih)}</td>
+                      <td className="vg-code vg-muted">{k.fisNo}</td>
+                      <td className="is-strong">{k.urunAd}</td>
+                      <td className="vg-muted">{k.marka || '—'}</td>
+                      <td className="vg-muted">{k.renk || '—'}</td>
+                      <td className="vg-muted">{k.beden || '—'}</td>
+                      <td className="is-num">{k.adet}</td>
+                      <td className="is-num">{para(k.birimFiyat)}</td>
+                      <td className={`is-num${k.indirim > 0 ? ' vg-text-critical' : ' vg-muted'}`}>{k.indirim > 0 ? `%${k.indirim}` : '—'}</td>
+                      <td className="is-num is-strong">{para(k.toplam)}</td>
+                      <td className="is-num vg-muted">{k.maliyet?para(k.maliyet*k.adet):'—'}</td>
+                      <td className={`is-num is-strong ${k.karMarji>0?'vg-text-success':'vg-text-critical'}`}>{k.karMarji!=null?para(k.karMarji):'—'}</td>
+                      <td className="vg-muted">{k.magaza}</td>
+                      <td className="vg-muted">{k.kasiyer}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {filtreli.length > 200 && <div className="vg-table-footer">İlk 200 kayıt gösteriliyor. Tümü için Excel'e aktarın.</div>}
         </div>
       )}
 
       {/* ÜRÜN ANALİZİ */}
       {!yukleniyor && aktifTab === 'urun' && (
-        <div className="vega-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          {/* Marka bazlı */}
-          <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: `1px solid ${t.border}`, fontSize: 13, fontWeight: 600, color: t.text }}>Marka Bazlı Ciro</div>
-            <div style={{ padding: '8px 0' }}>
-              {markaBazli.slice(0, 10).map(([m, d]) => (
-                <div key={m} style={{ padding: '10px 18px', borderBottom: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: 13, color: t.text, fontWeight: 500 }}>{m}</div>
-                    <div style={{ fontSize: 11, color: t.textMuted }}>{d.adet} adet</div>
-                  </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: t.accent }}>{para(d.ciro)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* Renk bazlı */}
-          <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: `1px solid ${t.border}`, fontSize: 13, fontWeight: 600, color: t.text }}>En Çok Satan Renkler</div>
-            <div style={{ padding: '8px 0' }}>
-              {renkBazli.map(([r, d]) => (
-                <div key={r} style={{ padding: '10px 18px', borderBottom: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: 13, color: t.text }}>{r}</div>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{ fontSize: 11, color: t.textMuted }}>{d.adet} adet</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: t.accent }}>{para(d.ciro)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="vg-grid-2">
+          <Card title="Marka bazlı ciro">
+            <SiraliListe satirlar={markaBazli.slice(0, 10).map(([m, d]) => ({ key: m, ad: m, alt: `${d.adet} adet`, deger: para(d.ciro) }))} />
+          </Card>
+          <Card title="En çok satan renkler">
+            <SiraliListe satirlar={renkBazli.map(([r, d]) => ({ key: r, ad: r, alt: `${d.adet} adet`, deger: para(d.ciro) }))} />
+          </Card>
         </div>
       )}
 
       {/* PERSONEL */}
       {!yukleniyor && aktifTab === 'personel' && (
-        <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, overflow: 'hidden' }}>
-          <div className="vega-scroll-x">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr style={{ borderBottom: `1px solid ${t.border}`, background: t.hover }}>
-              {['Personel', 'Satış Sayısı', 'Toplam Ciro', 'Ort. Sepet', 'Hedef', 'Gerçekleşme'].map(h => (
-                <th key={h} style={{ padding: '12px 14px', fontSize: 10, color: t.textMuted, fontWeight: 500, textAlign: 'left' }}>{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {personelBazli.map(([kid, p]) => {
-                const kul = kullanicilar.find(k => k.id === kid)
-                const buAyHedef = kul?.hedefler?.[0]
-                const hedef = buAyHedef ? Number(buAyHedef.hedef) : Number(kul?.aylikHedef || 0)
-                const yuzde = hedef > 0 ? Math.min(100, Math.round((p.ciro / hedef) * 100)) : null
-                return (
-                  <tr key={kid} style={{ borderBottom: `1px solid ${t.border}` }}>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{p.ad}</div>
-                      {kul && <div style={{ fontSize: 11, color: t.textMuted }}>{kul.email}</div>}
-                    </td>
-                    <td style={{ padding: '12px 14px', fontSize: 14, fontWeight: 600, color: '#56ccf2' }}>{p.satis}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 14, fontWeight: 700, color: t.accent }}>{para(p.ciro)}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 13, color: t.textMuted }}>{para(p.ciro / (p.satis || 1))}</td>
-                    <td style={{ padding: '12px 14px', fontSize: 13, color: t.textMuted }}>{hedef > 0 ? para(hedef) : '—'}</td>
-                    <td style={{ padding: '12px 14px', minWidth: 140 }}>
-                      {yuzde !== null ? (
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-                            <span style={{ color: t.textMuted }}>{yuzde}%</span>
-                            <span style={{ color: yuzde >= 100 ? '#6fcf97' : yuzde >= 60 ? t.accent : '#eb5757', fontWeight: 600 }}>{yuzde >= 100 ? '✓ Hedef Aşıldı' : 'Devam ediyor'}</span>
-                          </div>
-                          <div style={{ height: 6, background: t.input, borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${yuzde}%`, background: yuzde >= 100 ? '#6fcf97' : yuzde >= 60 ? t.accent : '#eb5757', borderRadius: 3 }} />
-                          </div>
-                        </div>
-                      ) : <span style={{ fontSize: 11, color: t.textMuted }}>Hedef tanımlanmamış</span>}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          </div>
-          {personelBazli.length === 0 && <div style={{ padding: 40, textAlign: 'center', color: t.textMuted }}>Bu dönemde satış kaydı bulunamadı</div>}
+        <div className="vg-table-wrap">
+          {personelBazli.length === 0 ? <EmptyState title="Bu dönemde satış kaydı yok" /> : (
+            <div className="vg-table-scroll">
+              <table className="vg-table" style={{ minWidth: 760 }}>
+                <thead><tr><th>Personel</th><th className="is-num">Satış</th><th className="is-num">Toplam ciro</th><th className="is-num">Ort. sepet</th><th className="is-num">Hedef</th><th style={{ width: 220 }}>Gerçekleşme</th></tr></thead>
+                <tbody>
+                  {personelBazli.map(([kid, p]) => {
+                    const kul = kullanicilar.find(k => k.id === kid)
+                    const buAyHedef = kul?.hedefler?.[0]
+                    const hedef = buAyHedef ? Number(buAyHedef.hedef) : Number(kul?.aylikHedef || 0)
+                    const yuzde = hedef > 0 ? (p.ciro / hedef) * 100 : null
+                    return (
+                      <tr key={kid}>
+                        <td><div className="is-strong">{p.ad}</div>{kul && <div className="vg-list__secondary">{kul.email}</div>}</td>
+                        <td className="is-num">{p.satis}</td>
+                        <td className="is-num is-strong">{para(p.ciro)}</td>
+                        <td className="is-num">{para(p.ciro / (p.satis || 1))}</td>
+                        <td className="is-num vg-muted">{hedef > 0 ? para(hedef) : '—'}</td>
+                        <td>{yuzde !== null ? <Progress name={yuzde >= 100 ? 'Hedef aşıldı' : 'Devam ediyor'} pct={yuzde} state={yuzde >= 100 ? 'done' : undefined} /> : <span className="vg-muted" style={{ fontSize: 12 }}>Hedef tanımlanmamış</span>}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
       {/* GRAFİK */}
       {!yukleniyor && aktifTab === 'grafik' && (
-        <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: 24 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: t.text, marginBottom: 20 }}>Günlük Ciro Grafiği</div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 200, overflowX: 'auto' }}>
-            {gunBazli.map(([gun, ciro]) => {
-              const yuzde = (ciro / maxGunCiro) * 100
-              return (
-                <div key={gun} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 40, flex: 1 }}>
-                  <div style={{ fontSize: 9, color: t.textMuted, whiteSpace: 'nowrap' }}>{para(ciro).replace('₺', '')}</div>
-                  <div style={{ width: '100%', background: `${t.accent}88`, borderRadius: '3px 3px 0 0', height: `${yuzde * 1.8}px`, minHeight: 2, transition: 'height .4s' }} />
-                  <div style={{ fontSize: 9, color: t.textMuted, whiteSpace: 'nowrap' }}>{gun.slice(5)}</div>
-                </div>
-              )
-            })}
-          </div>
-          {gunBazli.length === 0 && <div style={{ textAlign: 'center', color: t.textMuted, padding: 40 }}>Bu dönemde satış bulunamadı</div>}
-        </div>
+        <Card title="Günlük ciro" subtitle={`${gunBazli.length} gün · toplam ${para(toplamCiro)}`}>
+          {gunBazli.length === 0 ? <EmptyState compact title="Bu dönemde satış yok" /> : (
+            <BarChart height={220} format={paraKisa} minBarWidth={gunBazli.length > 31 ? 28 : undefined}
+              veri={gunBazli.map(([gun, ciro]) => ({ key: gun, label: gun.slice(8) + '.' + gun.slice(5, 7), value: ciro, current: gun === bugun, title: `${tarihTR(gun)}: ${para(ciro)}` }))} />
+          )}
+        </Card>
       )}
+
       {/* MASRAF SEKMESİ */}
       {!yukleniyor && aktifTab === 'masraf' && (
-        <div style={{display:'flex',flexDirection:'column',gap:16}}>
-          {/* Masraf KPI */}
-          <div className="vega-grid-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
-            <Kart l="Toplam Masraf" v={para(masraflar.reduce((t,m)=>t+Number(m.tutar||0),0))} c="#eb5757"/>
-            <Kart l="Masraf Sayısı" v={masraflar.length} c={t.textMuted}/>
-            <Kart l="Nakit Masraf" v={para(masraflar.filter(m=>m.odemeKaynagi==='nakit').reduce((t,m)=>t+Number(m.tutar||0),0))} c="#f2c94c"/>
-            <Kart l="Banka Masraf" v={para(masraflar.filter(m=>m.odemeKaynagi==='banka').reduce((t,m)=>t+Number(m.tutar||0),0))} c="#bb87fc"/>
+        <>
+          <div className="vg-grid-4">
+            <StatCard label="Toplam masraf" value={para(masrafToplam)} />
+            <StatCard label="Masraf sayısı" value={masraflar.length} />
+            <StatCard label="Nakit masraf" value={para(masraflar.filter(m=>m.odemeKaynagi==='nakit').reduce((t,m)=>t+Number(m.tutar||0),0))} />
+            <StatCard label="Banka masrafı" value={para(masraflar.filter(m=>m.odemeKaynagi==='banka').reduce((t,m)=>t+Number(m.tutar||0),0))} />
           </div>
-          {/* Kategori bazlı */}
-          <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-            <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20}}>
-              <div style={{fontSize:14,fontWeight:600,color:t.text,marginBottom:14}}>Kategori Bazlı</div>
-              {Object.entries(masraflar.reduce((acc,m)=>{
+          <div className="vg-grid-2">
+            <Card title="Kategori bazlı">
+              <SiraliListe bos="Masraf yok" satirlar={Object.entries(masraflar.reduce((acc,m)=>{
                 const k=m.kategori?.ad||'Kategorisiz'
                 acc[k]=(acc[k]||0)+Number(m.tutar||0)
                 return acc
-              },{})).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(
-                <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:`1px solid ${t.border}`,fontSize:12}}>
-                  <span style={{color:t.text}}>{k}</span>
-                  <span style={{color:'#eb5757',fontWeight:600}}>{para(v)}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20}}>
-              <div style={{fontSize:14,fontWeight:600,color:t.text,marginBottom:14}}>Ödeme Kaynağı</div>
-              {[['nakit','💵 Nakit'],['kart','💳 Kart'],['banka','🏦 Banka']].map(([k,l])=>{
-                const top=masraflar.filter(m=>m.odemeKaynagi===k).reduce((t,m)=>t+Number(m.tutar||0),0)
-                const oran=masraflar.length>0?(masraflar.filter(m=>m.odemeKaynagi===k).length/masraflar.length*100).toFixed(0):0
-                return top>0&&(
-                  <div key={k} style={{padding:'8px 0',borderBottom:`1px solid ${t.border}`}}>
-                    <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:4}}>
-                      <span style={{color:t.text}}>{l}</span>
-                      <span style={{color:'#eb5757',fontWeight:600}}>{para(top)}</span>
-                    </div>
-                    <div style={{height:6,background:t.input,borderRadius:3}}>
-                      <div style={{height:'100%',width:`${oran}%`,background:'#eb5757',borderRadius:3}}/>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+              },{})).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({ key:k, ad:k, deger:para(v) }))} />
+            </Card>
+            <Card title="Ödeme kaynağı">
+              <div className="vg-stack" style={{ gap: 12 }}>
+                {[['nakit','Nakit'],['kart','Kart'],['banka','Banka']].map(([k,l])=>{
+                  const top=masraflar.filter(m=>m.odemeKaynagi===k).reduce((t,m)=>t+Number(m.tutar||0),0)
+                  const oran=masraflar.length>0?(masraflar.filter(m=>m.odemeKaynagi===k).length/masraflar.length*100):0
+                  return top>0&&<Progress key={k} name={l} figures={para(top)} pct={oran} />
+                })}
+                {masrafToplam === 0 && <EmptyState compact title="Masraf yok" />}
+              </div>
+            </Card>
           </div>
-          {/* Masraf listesi */}
-          <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,overflow:'hidden'}}>
-            <div className="vega-scroll-x">
-            <table style={{width:'100%',borderCollapse:'collapse'}}>
-              <thead><tr style={{borderBottom:`1px solid ${t.border}`,background:t.hover}}>
-                {['Tarih','Kategori','Açıklama','Fatura No','Mağaza','Kaynak','Tutar'].map(h=>(
-                  <th key={h} style={{padding:'10px 14px',fontSize:10,color:t.textMuted,fontWeight:500,textAlign:'left'}}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {masraflar.length===0?<tr><td colSpan={7} style={{padding:40,textAlign:'center',color:t.textMuted}}>Bu dönemde masraf yok</td></tr>
-                :masraflar.map(m=>(
-                  <tr key={m.id} style={{borderBottom:`1px solid ${t.border}`}}>
-                    <td style={{padding:'9px 12px',fontSize:11,color:t.textMuted}}>{new Date(m.tarih).toLocaleDateString('tr-TR')}</td>
-                    <td style={{padding:'9px 12px'}}><span style={{fontSize:11,padding:'2px 8px',borderRadius:20,background:t.hover,color:t.textMuted}}>{m.kategori?.ikon||'💰'} {m.kategori?.ad||'—'}</span></td>
-                    <td style={{padding:'9px 12px',fontSize:12,color:t.text}}>{m.aciklama||'—'}</td>
-                    <td style={{padding:'9px 12px',fontSize:11,fontFamily:'monospace',color:t.textMuted}}>{m.faturaNo||'—'}</td>
-                    <td style={{padding:'9px 12px',fontSize:12,color:t.textMuted}}>{m.magaza?.ad||'Genel'}</td>
-                    <td style={{padding:'9px 12px'}}><span style={{fontSize:10,padding:'2px 6px',borderRadius:20,background:m.odemeKaynagi==='nakit'?'rgba(111,207,151,.1)':'rgba(187,135,252,.1)',color:m.odemeKaynagi==='nakit'?'#6fcf97':'#bb87fc'}}>{m.odemeKaynagi==='nakit'?'💵':'🏦'}</span></td>
-                    <td style={{padding:'9px 12px',fontSize:13,fontWeight:700,color:'#eb5757'}}>-{para(m.tutar)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
+          <div className="vg-table-wrap">
+            {masraflar.length===0 ? <EmptyState title="Bu dönemde masraf yok" /> : (
+              <div className="vg-table-scroll">
+                <table className="vg-table" style={{ minWidth: 760 }}>
+                  <thead><tr><th>Tarih</th><th>Kategori</th><th>Açıklama</th><th>Fatura no</th><th>Mağaza</th><th>Kaynak</th><th className="is-num">Tutar</th></tr></thead>
+                  <tbody>
+                    {masraflar.map(m=>(
+                      <tr key={m.id}>
+                        <td className="vg-nowrap vg-muted">{new Date(m.tarih).toLocaleDateString('tr-TR')}</td>
+                        <td>{m.kategori ? <Badge color={m.kategori.renk}>{m.kategori.ad}</Badge> : '—'}</td>
+                        <td>{m.aciklama||'—'}</td>
+                        <td className="vg-code vg-muted">{m.faturaNo||'—'}</td>
+                        <td className="vg-muted">{m.magaza?.ad||'Genel'}</td>
+                        <td><Badge dot={false}>{m.odemeKaynagi==='nakit'?'Nakit':m.odemeKaynagi==='kart'?'Kart':'Banka'}</Badge></td>
+                        <td className="is-num is-strong">−{para(m.tutar)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        </div>
+        </>
       )}
 
       {/* MÜŞTERİ ANALİZİ SEKMESİ */}
       {!yukleniyor && aktifTab === 'musteri' && (
-        <div style={{display:'flex',flexDirection:'column',gap:16}}>
-          <div className="vega-grid-3" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14}}>
-            <Kart l="Toplam Müşteri" v={musteriler.length} c={t.accent}/>
-            <Kart l="Alışveriş Yapan" v={[...new Set(satislar.filter(s=>s.musteriId).map(s=>s.musteriId))].length} c="#6fcf97"/>
-            <Kart l="Ort. Müşteri Sepeti" v={para(satislar.filter(s=>s.musteriId).reduce((t,s)=>t+Number(s.genelToplam||0),0)/Math.max([...new Set(satislar.filter(s=>s.musteriId).map(s=>s.musteriId))].length,1))} c="#bb87fc"/>
+        <>
+          <div className="vg-grid-3">
+            <StatCard label="Toplam müşteri" value={musteriler.length} />
+            <StatCard label="Alışveriş yapan" value={alisverisYapan} />
+            <StatCard label="Ort. müşteri sepeti" value={para(musteriSatis.reduce((t,s)=>t+Number(s.genelToplam||0),0)/Math.max(alisverisYapan,1))} />
           </div>
-          {/* En çok alışveriş yapan müşteriler */}
-          <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-            <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20}}>
-              <div style={{fontSize:14,fontWeight:600,color:t.text,marginBottom:14}}>En Çok Harcayan</div>
-              {Object.entries(satislar.filter(s=>s.musteriId).reduce((acc,s)=>{
+          <div className="vg-grid-2">
+            <Card title="En çok harcayan">
+              <SiraliListe bos="Müşterili satış yok" satirlar={Object.entries(musteriSatis.reduce((acc,s)=>{
                 const k=s.musteriId
                 const ad=s.musteriAd||`${s.musteri?.ad||''} ${s.musteri?.soyad||''}`.trim()||'—'
                 if(!acc[k]) acc[k]={ad,ciro:0,sayi:0}
                 acc[k].ciro+=Number(s.genelToplam||0)
                 acc[k].sayi++
                 return acc
-              },{})).sort((a,b)=>b[1].ciro-a[1].ciro).slice(0,8).map(([id,d])=>(
-                <div key={id} style={{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:`1px solid ${t.border}`,fontSize:12}}>
-                  <div><div style={{color:t.text,fontWeight:500}}>{d.ad}</div><div style={{fontSize:10,color:t.textMuted}}>{d.sayi} alışveriş</div></div>
-                  <span style={{color:t.accent,fontWeight:700}}>{para(d.ciro)}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20}}>
-              <div style={{fontSize:14,fontWeight:600,color:t.text,marginBottom:14}}>İade Yapan Müşteriler</div>
-              {iadeler.filter(i=>i.satis?.musteriId||i.siparis?.musteriId).length===0
-                ?<div style={{color:t.textMuted,fontSize:13,textAlign:'center',padding:20}}>İade yok</div>
-                :Object.entries(iadeler.reduce((acc,i)=>{
-                  const musteriId=i.satis?.musteriId||i.siparis?.musteriId
-                  const ad=i.satis?.musteri?.ad||i.siparis?.musteriAd||'—'
-                  if(!musteriId) return acc
-                  if(!acc[musteriId]) acc[musteriId]={ad,adet:0,tutar:0}
-                  acc[musteriId].adet++
-                  acc[musteriId].tutar+=Number(i.toplam||i.toplamIade||0)
-                  return acc
-                },{})).sort((a,b)=>b[1].adet-a[1].adet).slice(0,8).map(([id,d])=>(
-                  <div key={id} style={{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:`1px solid ${t.border}`,fontSize:12}}>
-                    <div><div style={{color:t.text,fontWeight:500}}>{d.ad}</div><div style={{fontSize:10,color:'#eb5757'}}>{d.adet} iade</div></div>
-                    <span style={{color:'#eb5757',fontWeight:700}}>-{para(d.tutar)}</span>
-                  </div>
-                ))
-              }
-            </div>
+              },{})).sort((a,b)=>b[1].ciro-a[1].ciro).slice(0,8).map(([id,d])=>({ key:id, ad:d.ad, alt:`${d.sayi} alışveriş`, deger:para(d.ciro) }))} />
+            </Card>
+            <Card title="İade yapan müşteriler">
+              <SiraliListe bos="İade yok" satirlar={Object.entries(iadeler.reduce((acc,i)=>{
+                const musteriId=i.satis?.musteriId||i.siparis?.musteriId
+                const ad=i.satis?.musteri?.ad||i.siparis?.musteriAd||'—'
+                if(!musteriId) return acc
+                if(!acc[musteriId]) acc[musteriId]={ad,adet:0,tutar:0}
+                acc[musteriId].adet++
+                acc[musteriId].tutar+=Number(i.toplam||i.toplamIade||0)
+                return acc
+              },{})).sort((a,b)=>b[1].adet-a[1].adet).slice(0,8).map(([id,d])=>({ key:id, ad:d.ad, alt:`${d.adet} iade`, deger:`−${para(d.tutar)}` }))} />
+            </Card>
           </div>
-        </div>
+        </>
+      )}
+
+      {/* İADE SEKMESİ */}
+      {!yukleniyor && aktifTab === 'iade' && (
+        <>
+          <div className="vg-grid-4">
+            <StatCard label="Toplam iade" value={para(iadeler.reduce((t,i)=>t+Number(i.toplam||i.toplamIade||0),0))} />
+            <StatCard label="İade sayısı" value={iadeler.length} />
+            <StatCard label="Onaylanan" value={iadeler.filter(i=>i.durum==='onaylandi').length} />
+            <StatCard label="Bekleyen" value={iadeler.filter(i=>i.durum==='beklemede').length} />
+          </div>
+          {iadeler.flatMap(i=>i.kalemler||[]).length>0&&(
+            <div className="vg-grid-2">
+              <Card title="En çok iade edilen">
+                <SiraliListe satirlar={Object.entries(iadeler.flatMap(i=>i.kalemler||[]).reduce((acc,k)=>{
+                  acc[k.urunAd]=(acc[k.urunAd]||0)+Number(k.adet||1); return acc
+                },{})).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([ad,adet])=>({ key:ad, ad, deger:`${adet} adet` }))} />
+              </Card>
+              <Card title="İade nedenleri">
+                <SiraliListe satirlar={Object.entries(iadeler.reduce((acc,i)=>{
+                  const n=i.neden||'Belirtilmemiş'; acc[n]=(acc[n]||0)+1; return acc
+                },{})).sort((a,b)=>b[1]-a[1]).map(([n,s])=>({ key:n, ad:n.replace(/_/g,' '), deger:s }))} />
+              </Card>
+            </div>
+          )}
+          <div className="vg-table-wrap">
+            {iadeler.length===0 ? <EmptyState title="Bu dönemde iade yok" /> : (
+              <div className="vg-table-scroll">
+                <table className="vg-table" style={{ minWidth: 760 }}>
+                  <thead><tr><th>Tarih</th><th>İade no</th><th>Fiş/sipariş</th><th>Müşteri</th><th>Ürünler</th><th className="is-num">Tutar</th><th>Durum</th></tr></thead>
+                  <tbody>
+                    {iadeler.map(i=>{
+                      const [ton, etiket] = IADE_DURUM[i.durum] || ['warning', 'Bekliyor']
+                      return (
+                        <tr key={i.id}>
+                          <td className="vg-nowrap vg-muted">{new Date(i.tarih).toLocaleDateString('tr-TR')}</td>
+                          <td className="vg-code">{i.iadeNo||'—'}</td>
+                          <td className="vg-code">{i.satis?.fisNo||i.siparis?.siparisNo||'—'}</td>
+                          <td>{i.satis?.musteri?.ad||i.siparis?.musteriAd||'—'}</td>
+                          <td className="vg-muted" style={{ maxWidth: 220 }}><div className="vg-truncate">{(i.kalemler||[]).map(k=>k.urunAd).join(', ')||'—'}</div></td>
+                          <td className="is-num is-strong">−{para(i.toplam||i.toplamIade||0)}</td>
+                          <td><Badge tone={ton}>{etiket}</Badge></td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* MAĞAZA BAZLI SEKMESİ */}
-      {/* İADE SEKMESİ */}
-      {!yukleniyor && aktifTab === 'iade' && (
-        <div style={{display:'flex',flexDirection:'column',gap:16}}>
-          <div className="vega-grid-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
-            <Kart l="Toplam İade" v={para(iadeler.reduce((t,i)=>t+Number(i.toplam||i.toplamIade||0),0))} c="#eb5757"/>
-            <Kart l="İade Sayısı" v={iadeler.length} c={t.textMuted}/>
-            <Kart l="Onaylanan" v={iadeler.filter(i=>i.durum==='onaylandi').length} c="#6fcf97"/>
-            <Kart l="Bekleyen" v={iadeler.filter(i=>i.durum==='beklemede').length} c="#f2c94c"/>
-          </div>
-          {iadeler.flatMap(i=>i.kalemler||[]).length>0&&(
-            <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-              <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20}}>
-                <div style={{fontSize:14,fontWeight:600,color:t.text,marginBottom:14}}>En Çok İade Edilen</div>
-                {Object.entries(iadeler.flatMap(i=>i.kalemler||[]).reduce((acc,k)=>{
-                  acc[k.urunAd]=(acc[k.urunAd]||0)+Number(k.adet||1); return acc
-                },{})).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([ad,adet])=>(
-                  <div key={ad} style={{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:`1px solid ${t.border}`,fontSize:12}}>
-                    <span style={{color:t.text}}>{ad}</span>
-                    <span style={{color:'#eb5757',fontWeight:600}}>{adet} adet</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20}}>
-                <div style={{fontSize:14,fontWeight:600,color:t.text,marginBottom:14}}>İade Nedenleri</div>
-                {Object.entries(iadeler.reduce((acc,i)=>{
-                  const n=i.neden||'Belirtilmemiş'; acc[n]=(acc[n]||0)+1; return acc
-                },{})).sort((a,b)=>b[1]-a[1]).map(([n,s])=>(
-                  <div key={n} style={{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:`1px solid ${t.border}`,fontSize:12}}>
-                    <span style={{color:t.text}}>{n}</span>
-                    <span style={{color:'#f2c94c',fontWeight:600}}>{s}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,overflow:'hidden'}}>
-            <div className="vega-scroll-x">
-            <table style={{width:'100%',borderCollapse:'collapse'}}>
-              <thead><tr style={{borderBottom:`1px solid ${t.border}`,background:t.hover}}>
-                {['Tarih','İade No','Fiş/Sipariş','Müşteri','Ürünler','Tutar','Durum'].map(h=>(
-                  <th key={h} style={{padding:'10px 14px',fontSize:10,color:t.textMuted,fontWeight:500,textAlign:'left'}}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {iadeler.length===0
-                  ?<tr><td colSpan={7} style={{padding:40,textAlign:'center',color:t.textMuted}}>Bu dönemde iade yok</td></tr>
-                  :iadeler.map(i=>(
-                  <tr key={i.id} style={{borderBottom:`1px solid ${t.border}`}}>
-                    <td style={{padding:'9px 12px',fontSize:11,color:t.textMuted}}>{new Date(i.tarih).toLocaleDateString('tr-TR')}</td>
-                    <td style={{padding:'9px 12px',fontSize:11,fontFamily:'monospace',color:t.textMuted}}>{i.iadeNo||'—'}</td>
-                    <td style={{padding:'9px 12px',fontSize:12,color:t.text}}>{i.satis?.fisNo||i.siparis?.siparisNo||'—'}</td>
-                    <td style={{padding:'9px 12px',fontSize:12,color:t.text}}>{i.satis?.musteri?.ad||i.siparis?.musteriAd||'—'}</td>
-                    <td style={{padding:'9px 12px',fontSize:11,color:t.textMuted}}>{(i.kalemler||[]).map(k=>k.urunAd).join(', ').slice(0,30)||'—'}</td>
-                    <td style={{padding:'9px 12px',fontSize:13,fontWeight:700,color:'#eb5757'}}>-{para(i.toplam||i.toplamIade||0)}</td>
-                    <td style={{padding:'9px 12px'}}><span style={{fontSize:11,padding:'2px 8px',borderRadius:20,
-                      background:i.durum==='onaylandi'?'rgba(111,207,151,.1)':i.durum==='reddedildi'?'rgba(235,87,87,.1)':'rgba(242,201,76,.1)',
-                      color:i.durum==='onaylandi'?'#6fcf97':i.durum==='reddedildi'?'#eb5757':'#f2c94c'}}>
-                      {i.durum==='onaylandi'?'✓ Onaylandı':i.durum==='reddedildi'?'✕ Reddedildi':'⏳ Bekliyor'}
-                    </span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </div>
-        </div>
-      )}
-
       {!yukleniyor && aktifTab === 'magaza' && (
-        <div style={{display:'flex',flexDirection:'column',gap:16}}>
-          {Object.entries(satislar.reduce((acc,s)=>{
-            const m=typeof s.magaza==='object'?s.magaza?.ad:s.magaza||'Belirtilmemiş'
-            if(!acc[m]) acc[m]={ad:m,ciro:0,sayi:0,iadeTutar:0,masrafTutar:0}
-            acc[m].ciro+=Number(s.genelToplam||0)
-            acc[m].sayi++
-            return acc
-          },{}).constructor===Object ? satislar.reduce((acc,s)=>{
-            const m=typeof s.magaza==='object'?s.magaza?.ad:s.magaza||'Belirtilmemiş'
-            if(!acc[m]) acc[m]={ad:m,ciro:0,sayi:0}
-            acc[m].ciro+=Number(s.genelToplam||0)
-            acc[m].sayi++
-            return acc
-          },{}) : {}).length === 0 ? (
-            <div style={{padding:40,textAlign:'center',color:t.textMuted}}>Veri yok</div>
-          ) : Object.entries(satislar.reduce((acc,s)=>{
-            const m=typeof s.magaza==='object'?s.magaza?.ad:s.magaza||'Belirtilmemiş'
-            if(!acc[m]) acc[m]={ad:m,ciro:0,sayi:0,masraf:0}
-            acc[m].ciro+=Number(s.genelToplam||0)
-            acc[m].sayi++
-            return acc
-          },{})).sort((a,b)=>b[1].ciro-a[1].ciro).map(([mag,d])=>{
-            const mMasraf=masraflar.filter(m=>m.magaza?.ad===mag).reduce((t,m)=>t+Number(m.tutar||0),0)
-            const mIade=iadeler.filter(i=>(typeof i.satis?.magaza==='object'?i.satis?.magaza?.ad:i.satis?.magaza)===mag).reduce((t,i)=>t+Number(i.toplam||0),0)
-            return (
-              <div key={mag} style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20}}>
-                <div style={{fontSize:16,fontWeight:700,color:t.text,marginBottom:14}}>🏪 {mag}</div>
-                <div className="vega-grid-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
-                  <div style={{background:t.hover,borderRadius:10,padding:'12px 14px'}}>
-                    <div style={{fontSize:10,color:t.textMuted,marginBottom:4}}>CİRO</div>
-                    <div style={{fontSize:16,fontWeight:700,color:t.accent}}>{para(d.ciro)}</div>
-                    <div style={{fontSize:10,color:t.textMuted}}>{d.sayi} satış</div>
+        magazaBazli.length === 0 ? <div className="vg-card"><EmptyState icon={Store} title="Veri yok" /></div> : (
+          <div className="vg-stack">
+            {magazaBazli.map(([mag,d])=>{
+              const mMasraf=masraflar.filter(m=>m.magaza?.ad===mag).reduce((t,m)=>t+Number(m.tutar||0),0)
+              const mIade=iadeler.filter(i=>(typeof i.satis?.magaza==='object'?i.satis?.magaza?.ad:i.satis?.magaza)===mag).reduce((t,i)=>t+Number(i.toplam||0),0)
+              const net = d.ciro-mMasraf-mIade
+              return (
+                <Card key={mag} title={mag}>
+                  <div className="vg-grid-4" style={{ gap: 8 }}>
+                    <Tile label="Ciro" value={para(d.ciro)}><div className="vg-help">{d.sayi} satış</div></Tile>
+                    <Tile label="Masraf" value={`−${para(mMasraf)}`} />
+                    <Tile label="İade" value={`−${para(mIade)}`} />
+                    <Tile label="Net" value={para(net)} tone={net >= 0 ? 'success' : 'critical'} />
                   </div>
-                  <div style={{background:t.hover,borderRadius:10,padding:'12px 14px'}}>
-                    <div style={{fontSize:10,color:t.textMuted,marginBottom:4}}>MASRAF</div>
-                    <div style={{fontSize:16,fontWeight:700,color:'#eb5757'}}>-{para(mMasraf)}</div>
-                  </div>
-                  <div style={{background:t.hover,borderRadius:10,padding:'12px 14px'}}>
-                    <div style={{fontSize:10,color:t.textMuted,marginBottom:4}}>İADE</div>
-                    <div style={{fontSize:16,fontWeight:700,color:'#f2c94c'}}>-{para(mIade)}</div>
-                  </div>
-                  <div style={{background:t.hover,borderRadius:10,padding:'12px 14px'}}>
-                    <div style={{fontSize:10,color:t.textMuted,marginBottom:4}}>NET</div>
-                    <div style={{fontSize:16,fontWeight:700,color:'#6fcf97'}}>{para(d.ciro-mMasraf-mIade)}</div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                </Card>
+              )
+            })}
+          </div>
+        )
       )}
-    </div>
+    </Page>
   )
 }

@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react'
 import { para, tarihFormat } from './utils'
+import { Page, PageHeader, Card, Select, Segmented, StatCard, EmptyState } from '../ui'
+import { CreditCard } from 'lucide-react'
 
-export default function PosRapor({ gecmis, terminaller, t }) {
+export default function PosRapor({ gecmis, terminaller }) {
   const [donem, setDonem]           = useState('bugun')
   const [magazaFiltre, setMagazaFiltre] = useState('Tümü')
 
@@ -34,108 +36,72 @@ export default function PosRapor({ gecmis, terminaller, t }) {
   }).filter(x => x.islemSayisi > 0)
 
   const magazalar = [...new Set(gecmis.map(s => typeof s.magaza==='object'?s.magaza?.ad:s.magaza).filter(Boolean))]
+  const kartSatirlari = filtreli.flatMap(s => (s.odemeler||[]).filter(o=>['kart','taksit'].includes(o.tip)).map((o,i)=>({ s, o, key: `${s.fisNo}_${i}` })))
 
   return (
-    <div style={{padding:'24px 28px'}}>
-      {/* Başlık + filtreler */}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:22,flexWrap:'wrap',gap:12}}>
-        <div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:t.text}}>POS & Banka Raporu</div>
-          <div style={{fontSize:13,color:t.textMuted,marginTop:3}}>{filtreli.length} satış işlemi</div>
-        </div>
-        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-          {[['bugun','Bugün'],['bu_hafta','Bu Hafta'],['bu_ay','Bu Ay'],['hepsi','Tümü']].map(([k,l])=>(
-            <button key={k} onClick={()=>setDonem(k)} style={{padding:'7px 16px',borderRadius:20,fontSize:12,
-              background:donem===k?t.accentBg:t.input,border:`1px solid ${donem===k?t.accent+'55':t.border}`,
-              color:donem===k?t.accent:t.textMuted}}>{l}</button>
-          ))}
-          <select value={magazaFiltre} onChange={e=>setMagazaFiltre(e.target.value)}
-            style={{padding:'7px 14px',borderRadius:20,fontSize:12,background:t.input,border:`1px solid ${t.border}`,color:t.text,outline:'none'}}>
-            <option>Tümü</option>
+    <Page>
+      <PageHeader title="POS ve banka raporu" subtitle={`${filtreli.length} satış işlemi`}>
+        <div className="vg-row">
+          <Segmented label="Dönem" value={donem} onChange={setDonem}
+            options={[{ value:'bugun', label:'Bugün' }, { value:'bu_hafta', label:'Son 7 gün' }, { value:'bu_ay', label:'Bu ay' }, { value:'hepsi', label:'Tümü' }]} />
+          <Select size="sm" value={magazaFiltre} onChange={e=>setMagazaFiltre(e.target.value)} aria-label="Mağaza" style={{ width: 'auto' }}>
+            <option value="Tümü">Tüm mağazalar</option>
             {magazalar.map(m=><option key={m}>{m}</option>)}
-          </select>
+          </Select>
         </div>
+      </PageHeader>
+
+      <div className="vg-grid-4">
+        <StatCard label="Kartla brüt ciro" value={para(genelBrut)} />
+        <StatCard label="Toplam komisyon" value={para(genelKomisyon)} />
+        <StatCard label="Net tahsilat" value={para(genelNet)} />
+        <StatCard label="Ortalama komisyon" value={`%${genelBrut>0?((genelKomisyon/genelBrut)*100).toFixed(2).replace('.', ','):0}`} />
       </div>
 
-      {/* KPI */}
-      <div className="vega-grid-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:24}}>
-        {[
-          {l:'Brüt Ciro',       v:para(genelBrut),    c:t.accent},
-          {l:'Toplam Komisyon', v:para(genelKomisyon), c:'#eb5757'},
-          {l:'Net Tahsilat',    v:para(genelNet),      c:'#6fcf97'},
-          {l:'Komisyon Oranı',  v:`%${genelBrut>0?((genelKomisyon/genelBrut)*100).toFixed(2):0}`, c:'#f2c94c'},
-        ].map(k=>(
-          <div key={k.l} style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:12,padding:'16px 18px'}}>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>{k.l}</div>
-            <div style={{fontSize:20,fontFamily:"'Playfair Display',serif",color:k.c}}>{k.v}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Terminal raporu */}
       {terminalRapor.length > 0 && (
-        <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,overflow:'hidden',marginBottom:24}}>
-          <div style={{padding:'14px 18px',borderBottom:`1px solid ${t.border}`,fontSize:12,color:t.textMuted,letterSpacing:.5}}>
-            TERMINAL BAZLI KOMİSYON
-          </div>
-          <div className="vega-scroll-x">
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr style={{borderBottom:`1px solid ${t.border}`,background:t.hover}}>
-              {['Terminal','Banka','İşlem','Brüt','Komisyon','Net'].map(h=>(
-                <th key={h} style={{padding:'10px 14px',fontSize:10,color:t.textMuted,fontWeight:500,textAlign:'left'}}>{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {terminalRapor.map(r=>(
-                <tr key={r.id} style={{borderBottom:`1px solid ${t.border}`}}>
-                  <td style={{padding:'10px 14px',fontSize:13,color:t.text}}>{r.ad}</td>
-                  <td style={{padding:'10px 14px',fontSize:12,color:t.textMuted}}>{r.banka}</td>
-                  <td style={{padding:'10px 14px',fontSize:13,color:t.text}}>{r.islemSayisi}</td>
-                  <td style={{padding:'10px 14px',fontSize:13,fontWeight:600,color:t.accent}}>{para(r.brutToplam)}</td>
-                  <td style={{padding:'10px 14px',fontSize:12,color:'#f2c94c'}}>{para(r.komisyonToplam)}</td>
-                  <td style={{padding:'10px 14px',fontSize:13,fontWeight:600,color:'#6fcf97'}}>{para(r.netToplam)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        </div>
-      )}
-
-      {/* Satış listesi */}
-      <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,overflow:'hidden'}}>
-        <div style={{padding:'14px 18px',borderBottom:`1px solid ${t.border}`,fontSize:12,color:t.textMuted}}>
-          KREDİ KARTI İŞLEMLERİ
-        </div>
-        {filtreli.length === 0
-          ? <div style={{padding:40,textAlign:'center',color:t.textMuted}}>Bu dönemde işlem yok</div>
-          : <div className="vega-scroll-x"><table style={{width:'100%',borderCollapse:'collapse'}}>
-              <thead><tr style={{borderBottom:`1px solid ${t.border}`,background:t.hover}}>
-                {['Fiş No','Tarih','Mağaza','Ödeme','Tutar','Komisyon','Net'].map(h=>(
-                  <th key={h} style={{padding:'10px 14px',fontSize:10,color:t.textMuted,fontWeight:500,textAlign:'left'}}>{h}</th>
-                ))}
-              </tr></thead>
+        <Card title="Terminal bazlı komisyon" padded={false}>
+          <div className="vg-table-scroll" style={{ marginTop: 10 }}>
+            <table className="vg-table" style={{ minWidth: 640 }}>
+              <thead><tr><th>Terminal</th><th>Banka</th><th className="is-num">İşlem</th><th className="is-num">Brüt</th><th className="is-num">Komisyon</th><th className="is-num">Net</th></tr></thead>
               <tbody>
-                {filtreli.flatMap(s =>
-                  (s.odemeler||[]).filter(o=>['kart','taksit'].includes(o.tip)).map((o,i)=>(
-                    <tr key={`${s.fisNo}_${i}`} style={{borderBottom:`1px solid ${t.border}`}}>
-                      <td style={{padding:'10px 14px',fontSize:11,color:t.textMuted,fontFamily:'monospace'}}>{s.fisNo}</td>
-                      <td style={{padding:'10px 14px',fontSize:11,color:t.textMuted}}>{tarihFormat(s.tarih)}</td>
-                      <td style={{padding:'10px 14px',fontSize:12,color:t.text}}>{typeof s.magaza==='object'?s.magaza?.ad:s.magaza}</td>
-                      <td style={{padding:'10px 14px',fontSize:12,color:t.text}}>
-                        {o.banka} {o.taksit>1?`(${o.taksit} taksit)`:''}
-                      </td>
-                      <td style={{padding:'10px 14px',fontSize:13,fontWeight:600,color:t.accent}}>{para(o.tutar)}</td>
-                      <td style={{padding:'10px 14px',fontSize:12,color:'#f2c94c'}}>{para(o.komisyonTutar)}</td>
-                      <td style={{padding:'10px 14px',fontSize:13,fontWeight:600,color:'#6fcf97'}}>{para(o.netTahsilat||o.tutar)}</td>
-                    </tr>
-                  ))
-                )}
+                {terminalRapor.map(r=>(
+                  <tr key={r.id}>
+                    <td className="is-strong">{r.ad}</td>
+                    <td className="vg-muted">{r.banka}</td>
+                    <td className="is-num">{r.islemSayisi}</td>
+                    <td className="is-num is-strong">{para(r.brutToplam)}</td>
+                    <td className="is-num vg-text-critical">−{para(r.komisyonToplam)}</td>
+                    <td className="is-num is-strong vg-text-success">{para(r.netToplam)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-            </div>
-        }
-      </div>
-    </div>
+          </div>
+        </Card>
+      )}
+
+      <Card title="Kredi kartı işlemleri" padded={false}>
+        {kartSatirlari.length === 0 ? <EmptyState compact icon={CreditCard} title="Bu dönemde kartla işlem yok" /> : (
+          <div className="vg-table-scroll" style={{ marginTop: 10 }}>
+            <table className="vg-table" style={{ minWidth: 760 }}>
+              <thead><tr><th>Fiş no</th><th>Tarih</th><th>Mağaza</th><th>Ödeme</th><th className="is-num">Tutar</th><th className="is-num">Komisyon</th><th className="is-num">Net</th></tr></thead>
+              <tbody>
+                {kartSatirlari.map(({ s, o, key })=>(
+                  <tr key={key}>
+                    <td className="vg-code">{s.fisNo}</td>
+                    <td className="vg-nowrap vg-muted">{tarihFormat(s.tarih)}</td>
+                    <td>{typeof s.magaza==='object'?s.magaza?.ad:s.magaza}</td>
+                    <td>{o.banka} {o.taksit>1?<span className="vg-muted">· {o.taksit} taksit</span>:''}</td>
+                    <td className="is-num is-strong">{para(o.tutar)}</td>
+                    <td className="is-num vg-text-critical">−{para(o.komisyonTutar)}</td>
+                    <td className="is-num is-strong">{para(o.netTahsilat||o.tutar)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </Page>
   )
 }

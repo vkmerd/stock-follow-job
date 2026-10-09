@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { kasaBugunGetir, kasaAc, kasaKapat, kasaIslemEkle , API_BASE } from '../api'
 import { usePrint } from '../print/usePrint'
 import { FIS_CSS } from './utils'
+import { Page, PageHeader, Card, Button, Field, Input, Select, Segmented, Badge, Banner, Modal, StatCard, EmptyState, LoadingRows, toast } from '../ui'
+import { Lock, LockOpen, Plus, Printer, Landmark, Plug, Store, ArrowUp, ArrowDown } from 'lucide-react'
 
 const para = v => `₺${Number(v||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}`
 const saat  = iso => new Date(iso).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})
 
-export default function GunlukKasa({ t, magazaId, magazaAd }) {
+export default function GunlukKasa({ magazaId, magazaAd }) {
   const [kasa, setKasa]             = useState(null)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [acilisModal, setAcilisModal] = useState(false)
@@ -38,8 +40,9 @@ export default function GunlukKasa({ t, magazaId, magazaAd }) {
     try {
       await kasaAc({ magazaId, acilisBakiyesi: Number(acilisBakiye)||0 })
       setAcilisModal(false)
+      toast.success('Kasa açıldı.')
       yukle()
-    } catch(e) { alert(e.message) }
+    } catch(e) { toast.error(e.message) }
     finally { setKayit(false) }
   }
 
@@ -48,21 +51,23 @@ export default function GunlukKasa({ t, magazaId, magazaAd }) {
     try {
       await kasaKapat({ kasaId: kasa.id, kapanisBakiyesi: Number(kapanisBakiye)||0 })
       setKapanisModal(false)
+      toast.success('Kasa kapatıldı. Z raporu hazırlanıyor.')
       yukle()
       setTimeout(() => yazdirZRaporu(), 800)
-    } catch(e) { alert(e.message) }
+    } catch(e) { toast.error(e.message) }
     finally { setKayit(false) }
   }
 
   const islemEkleFn = async () => {
-    if (!islemForm.tutar || Number(islemForm.tutar) <= 0) return alert('Tutar giriniz')
+    if (!islemForm.tutar || Number(islemForm.tutar) <= 0) return toast.warning('Tutar girin.')
     setKayit(true)
     try {
       await kasaIslemEkle({ kasaId: kasa.id, ...islemForm, tutar: Number(islemForm.tutar) })
       setIslemModal(false)
       setIslemForm({ tip:'giris', odeme:'nakit', tutar:'', aciklama:'' })
+      toast.success('Nakit hareketi kaydedildi.')
       yukle()
-    } catch(e) { alert(e.message) }
+    } catch(e) { toast.error(e.message) }
     finally { setKayit(false) }
   }
 
@@ -77,7 +82,7 @@ export default function GunlukKasa({ t, magazaId, magazaAd }) {
         await print.zRaporuYazdir(kasa, magazaAd, ekstraNakitAktarim ?? kasa.nakitAktarim ?? null)
         return
       } catch (err) {
-        alert('QZ Tray ile yazdırma hatası: ' + err.message + ' — tarayıcıdan yazdırılıyor.')
+        toast.warning('QZ Tray ile yazdırılamadı: ' + err.message + '. Tarayıcıdan yazdırılıyor.')
       } finally {
         setQzYazdiriliyor(false)
       }
@@ -133,7 +138,7 @@ export default function GunlukKasa({ t, magazaId, magazaAd }) {
     ${(kasa.manuelHareketler||[]).map(h=>
       '<div class="r sm"><span>'+(h.aciklama||h.tip)+'</span><span>'+(h.tip==='nakit_giris'?'+':'-')+para(h.tutar)+'</span></div>'
     ).join('')}`:''}
-    ${_nakitAktarim ? `<hr/><div class="r bold" style="font-size:12px"><span>🏦 Nakit Kasa Aktarımı:</span><span>${para(_nakitAktarim)}</span></div>` : ''}
+    ${_nakitAktarim ? `<hr/><div class="r bold" style="font-size:12px"><span>Nakit Kasa Aktarımı:</span><span>${para(_nakitAktarim)}</span></div>` : ''}
     <hr/>
     <div class="c sm" style="margin-top:6px">Vega Çanta & Ayakkabı</div>
     <div class="c sm">Teşekkürler</div>
@@ -142,333 +147,195 @@ export default function GunlukKasa({ t, magazaId, magazaAd }) {
     win.document.close()
   }
 
+  const nakitAktar = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/kasa/nakite-aktar`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          kasaId: kasa.id,
+          tutar: Number(nakitAktarTutar),
+          aciklama: `Günlük Kasa Nakdi - ${new Date().toLocaleDateString('tr-TR')} - ${magazaAd}`
+        })
+      })
+      if (!res.ok) throw new Error('Aktarım yapılamadı')
+      toast.success('Nakit kasaya aktarıldı.')
+      setNakitAktarModal(false)
+      // Aktarım tutarını kasa state'e ekle ve Z raporu bas
+      setKasa(p => p ? {...p, nakitAktarim: Number(nakitAktarTutar)} : p)
+      setTimeout(() => yazdirZRaporu(Number(nakitAktarTutar)), 300)
+      yukle()
+    } catch(e) { toast.error('Aktarılamadı: '+e.message) }
+  }
+
+  const bugunMetni = new Date().toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+
   if (!magazaId) return (
-    <div style={{padding:40,textAlign:'center',color:t.textMuted}}>
-      Günlük kasa için üstten mağaza seçiniz
-    </div>
+    <Page><div className="vg-card"><EmptyState icon={Store} title="Mağaza seçilmedi" text="Günlük kasa için üst şeritten bir mağaza seçin." /></div></Page>
   )
 
-  if (yukleniyor) return <div style={{padding:40,textAlign:'center',color:t.textMuted}}>⏳ Yükleniyor...</div>
+  if (yukleniyor) return <Page><LoadingRows /></Page>
 
   const o = kasa?.ozet || {}
   const kapali = !kasa || kasa?.durum === 'kapali'
+  const fark = Number(kapanisBakiye) - (o.nakitNet || 0)
 
-  // Kasa kapalıysa veya bugün hiç açılmamışsa açma ekranı göster
-  if (kapali && !acilisModal) return (
-    <div style={{padding:60,textAlign:'center'}}>
-      <div style={{fontSize:48,marginBottom:16}}>🏧</div>
-      <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:t.text,marginBottom:8}}>
-        Kasa {kasa?.durum==='kapali'?'Kapalı':'Bugün Açılmamış'}
+  const tutarAlani = (id, deger, setDeger, etiket, props = {}) => (
+    <Field label={etiket} htmlFor={id}>
+      <div className="vg-input-group">
+        <Input id={id} type="number" size="lg" className="vg-num" value={deger} onChange={e=>setDeger(e.target.value)} placeholder="0,00" style={{ paddingRight: 28, fontWeight: 600 }} {...props} />
+        <span className="vg-input-suffix">₺</span>
       </div>
-      <div style={{fontSize:13,color:t.textMuted,marginBottom:24}}>
-        {magazaAd} — {new Date().toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})}
-      </div>
-      <button onClick={()=>setAcilisModal(true)} style={{
-        padding:'14px 36px',borderRadius:14,fontSize:16,fontWeight:700,
-        background:'rgba(111,207,151,.15)',border:'1px solid rgba(111,207,151,.4)',color:'#6fcf97'}}>
-        🔓 Kasayı Aç
-      </button>
-    </div>
+    </Field>
   )
 
   return (
-    <div style={{padding:'24px 28px'}}>
-      {/* Başlık */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22,flexWrap:'wrap',gap:12}}>
-        <div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:t.text}}>
-            Günlük Kasa — {magazaAd}
-          </div>
-          <div style={{fontSize:13,color:t.textMuted,marginTop:3}}>
-            {new Date().toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
-            {' · '}
-            <span style={{color:kapali?'#eb5757':'#6fcf97',fontWeight:600}}>
-              {kapali?'● Kapalı':'● Açık'}
-            </span>
-          </div>
+    <Page>
+      {kapali ? (
+        <div className="vg-card">
+          <EmptyState icon={Lock} title={kasa?.durum==='kapali' ? 'Kasa kapalı' : 'Kasa bugün açılmadı'} text={`${magazaAd} · ${bugunMetni}`}
+            actions={<Button variant="primary" size="lg" icon={LockOpen} onClick={()=>setAcilisModal(true)}>Kasayı aç</Button>} />
         </div>
-        <div style={{display:'flex',gap:8}}>
-          <button onClick={()=>setIslemModal(true)} disabled={kapali} style={{
-            padding:'9px 18px',borderRadius:10,background:t.accentBg,
-            border:`1px solid ${t.accent}55`,color:t.accent,fontSize:12,fontWeight:600}}>
-            + Nakit Hareket
-          </button>
-          <button onClick={()=>yazdirZRaporu()} disabled={qzYazdiriliyor} style={{
-            padding:'9px 18px',borderRadius:10,background:t.input,
-            border:`1px solid ${t.border}`,color:t.textMuted,fontSize:12}}>
-            {qzYazdiriliyor?'⏳ Yazdırılıyor...':'🖨 Z Raporu'}
-          </button>
-          {!kapali && (
-            <button onClick={()=>{setKapanisBakiye(String(o.nakitNet||0));setKapanisModal(true)}} style={{
-              padding:'9px 18px',borderRadius:10,background:'rgba(235,87,87,.12)',
-              border:'1px solid rgba(235,87,87,.35)',color:'#eb5757',fontSize:12,fontWeight:600}}>
-              Kasayı Kapat
-            </button>
-          )}
-        </div>
-      </div>
+      ) : (
+        <>
+          <PageHeader title={`Günlük kasa · ${magazaAd}`} subtitle={bugunMetni}
+            actions={<>
+              <Badge tone="success">Açık</Badge>
+              <Button icon={Plus} onClick={()=>setIslemModal(true)}>Nakit hareketi</Button>
+              <Button icon={Printer} onClick={()=>yazdirZRaporu()} loading={qzYazdiriliyor}>{qzYazdiriliyor?'Yazdırılıyor…':'Z raporu'}</Button>
+              <Button variant="critical" icon={Lock} onClick={()=>{setKapanisBakiye(String(o.nakitNet||0));setKapanisModal(true)}}>Kasayı kapat</Button>
+            </>} />
 
-      {/* QZ Tray — Z Raporu'nun fiş yazıcısından (tarayıcı penceresi açmadan) basılabilmesi için */}
-      <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'8px 14px',
-        background:t.card,border:`1px solid ${t.border}`,borderRadius:10,marginBottom:14,fontSize:11}}>
-        <div style={{width:8,height:8,borderRadius:'50%',background:print.bagli?'#6fcf97':'#eb5757'}}/>
-        <span style={{color:t.textMuted}}>QZ Tray: {print.bagli?'Bağlı':'Bağlı Değil'}</span>
-        {!print.bagli && (
-          <button onClick={print.baglan} disabled={print.baglaniyor} style={{fontSize:10,padding:'3px 10px',borderRadius:6,
-            background:t.accentBg,border:`1px solid ${t.accent}44`,color:t.accent}}>
-            {print.baglaniyor?'Bağlanıyor...':'Bağlan'}
-          </button>
-        )}
-        {print.bagli && (
-          <>
-            <span style={{color:t.textMuted}}>· Fiş Yazıcısı:</span>
-            <select value={print.fisYazici} onChange={e=>print.fisYaziciSec(e.target.value)}
-              style={{padding:'4px 8px',borderRadius:6,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:11,outline:'none'}}>
-              <option value="">Seçin...</option>
-              {print.yazicilar.map(y=><option key={y} value={y}>{y}</option>)}
-            </select>
-            {print.fisYazici
-              ? <span style={{color:'#6fcf97'}}>✓ Z Raporu bu yazıcıdan basılacak</span>
-              : <span style={{color:'#f2c94c'}}>⚠ Seçilmezse tarayıcıdan basılır</span>}
-          </>
-        )}
-        {print.hata && <span style={{color:'#eb5757'}}>{print.hata}</span>}
-      </div>
-
-      {/* KPI Kartlar */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:22}}>
-        {[
-          {l:'Açılış Bakiyesi', v:para(kasa?.acilisBakiyesi||0), c:t.accent},
-          {l:'Toplam Satış',    v:para(o.toplamSatis),           c:'#6fcf97'},
-          {l:'Nakit Satış',     v:para(o.nakitSatis),            c:'#6fcf97'},
-          {l:'Kart Satış',      v:para(o.kartSatis),             c:'#56ccf2'},
-          {l:'Havale',          v:para(o.havaleSatis),           c:'#bb87fc'},
-          {l:'İadeler',         v:`-${para(o.toplamIade)}`,      c:'#f2c94c'},
-          {l:'Masraflar',       v:`-${para(o.toplamMasraf)}`,    c:'#eb5757'},
-          {l:'Kasadaki Nakit',  v:para(o.nakitNet),              c:t.accent, bold:true},
-        ].map(k=>(
-          <div key={k.l} style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:12,padding:'14px 16px'}}>
-            <div style={{fontSize:10,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.4}}>{k.l}</div>
-            <div style={{fontSize:k.bold?20:16,fontWeight:k.bold?700:600,color:k.c,fontFamily:"'Playfair Display',serif"}}>{k.v}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Satışlar */}
-      {(kasa?.satislar||[]).length > 0 && (
-        <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,overflow:'hidden',marginBottom:16}}>
-          <div style={{padding:'12px 18px',borderBottom:`1px solid ${t.border}`,fontSize:11,color:t.textMuted,textTransform:'uppercase',letterSpacing:.5}}>
-            Bugünkü Satışlar ({kasa.satislar.length})
-          </div>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr style={{borderBottom:`1px solid ${t.border}`,background:t.hover}}>
-              {['Saat','Fiş No','Kalem','Ödeme','Tutar'].map(h=>(
-                <th key={h} style={{padding:'9px 14px',fontSize:10,color:t.textMuted,fontWeight:500,textAlign:'left'}}>{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {kasa.satislar.map(s=>(
-                <tr key={s.id} style={{borderBottom:`1px solid ${t.border}`}}>
-                  <td style={{padding:'9px 14px',fontSize:11,color:t.textMuted}}>{saat(s.tarih)}</td>
-                  <td style={{padding:'9px 14px',fontSize:12,color:t.accent,fontFamily:'monospace'}}>{s.fisNo}</td>
-                  <td style={{padding:'9px 14px',fontSize:12,color:t.text}}>{s.kalemler?.length||0} ürün</td>
-                  <td style={{padding:'9px 14px',fontSize:11,color:t.textMuted}}>
-                    {s.odemeler?.map(o=>o.tip).join(', ')}
-                  </td>
-                  <td style={{padding:'9px 14px',fontSize:13,fontWeight:600,color:'#6fcf97'}}>{para(s.genelToplam)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Manuel İşlemler */}
-      {(kasa?.islemler||[]).length > 0 && (
-        <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,overflow:'hidden'}}>
-          <div style={{padding:'12px 18px',borderBottom:`1px solid ${t.border}`,fontSize:11,color:t.textMuted,textTransform:'uppercase',letterSpacing:.5}}>
-            Manuel Nakit Hareketler
-          </div>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <tbody>
-              {kasa.islemler.map(i=>(
-                <tr key={i.id} style={{borderBottom:`1px solid ${t.border}`}}>
-                  <td style={{padding:'9px 14px',fontSize:11,color:t.textMuted}}>{saat(i.tarih)}</td>
-                  <td style={{padding:'9px 14px'}}>
-                    <span style={{fontSize:11,padding:'2px 8px',borderRadius:10,
-                      background:i.tip==='giris'?'rgba(111,207,151,.1)':'rgba(235,87,87,.1)',
-                      color:i.tip==='giris'?'#6fcf97':'#eb5757'}}>
-                      {i.tip==='giris'?'↑ Giriş':'↓ Çıkış'}
-                    </span>
-                  </td>
-                  <td style={{padding:'9px 14px',fontSize:12,color:t.text}}>{i.aciklama||'—'}</td>
-                  <td style={{padding:'9px 14px',fontSize:13,fontWeight:600,
-                    color:i.tip==='giris'?'#6fcf97':'#eb5757'}}>
-                    {i.tip==='giris'?'+':'-'}{para(i.tutar)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Kasa Açılış Modal */}
-      {acilisModal && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.8)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:28,width:360}}>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text,marginBottom:18}}>Kasayı Aç</div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase'}}>Açılış Nakit Bakiyesi</div>
-            <div style={{position:'relative',marginBottom:18}}>
-              <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:t.textMuted}}>₺</span>
-              <input type="number" value={acilisBakiye} onChange={e=>setAcilisBakiye(e.target.value)}
-                placeholder="0,00" autoFocus
-                style={{width:'100%',padding:'12px 14px 12px 28px',borderRadius:10,background:t.input,
-                  border:`1px solid ${t.border}`,color:t.accent,fontSize:18,fontWeight:700,outline:'none'}}/>
-            </div>
-            <div style={{display:'flex',gap:10}}>
-              <button onClick={()=>setAcilisModal(false)} style={{flex:1,padding:'11px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-              <button onClick={kasaAcFn} disabled={kayit} style={{flex:2,padding:'11px 0',borderRadius:10,background:'rgba(111,207,151,.14)',border:'1px solid rgba(111,207,151,.4)',color:'#6fcf97',fontSize:13,fontWeight:700}}>
-                {kayit?'...':'✓ Kasayı Aç'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Kapanış Modal */}
-      {kapanisModal && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.8)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:28,width:400}}>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text,marginBottom:18}}>Kasayı Kapat</div>
-            <div style={{padding:'12px 16px',background:'rgba(242,201,76,.06)',border:'1px solid rgba(242,201,76,.2)',borderRadius:10,marginBottom:16}}>
-              <div style={{fontSize:11,color:'#f2c94c',marginBottom:4}}>Sistem Hesabı</div>
-              <div style={{fontSize:20,fontWeight:700,color:t.accent}}>{para(o.nakitNet)}</div>
-            </div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase'}}>Sayılan Nakit</div>
-            <div style={{position:'relative',marginBottom:18}}>
-              <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:t.textMuted}}>₺</span>
-              <input type="number" value={kapanisBakiye} onChange={e=>setKapanisBakiye(e.target.value)}
-                style={{width:'100%',padding:'12px 14px 12px 28px',borderRadius:10,background:t.input,
-                  border:`1px solid ${t.border}`,color:t.accent,fontSize:18,fontWeight:700,outline:'none'}}/>
-            </div>
-            {kapanisBakiye && (
-              <div style={{padding:'10px 14px',borderRadius:8,marginBottom:14,
-                background: Math.abs(Number(kapanisBakiye)-o.nakitNet)<1 ? 'rgba(111,207,151,.08)' : 'rgba(235,87,87,.08)',
-                border: `1px solid ${Math.abs(Number(kapanisBakiye)-o.nakitNet)<1 ? 'rgba(111,207,151,.3)' : 'rgba(235,87,87,.3)'}`}}>
-                <div style={{fontSize:12,color:t.textMuted}}>Fark</div>
-                <div style={{fontSize:16,fontWeight:700,color:Number(kapanisBakiye)-o.nakitNet>=0?'#6fcf97':'#eb5757'}}>
-                  {Number(kapanisBakiye)-o.nakitNet >= 0 ? '+' : ''}{para(Number(kapanisBakiye)-o.nakitNet)}
-                </div>
-              </div>
+          {/* QZ Tray — Z Raporu'nun fiş yazıcısından (tarayıcı penceresi açmadan) basılabilmesi için */}
+          <div className="vg-tile vg-row" style={{ gap: 10 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: print.bagli ? 'var(--success)' : 'var(--critical)' }} />
+            <span className="vg-muted" style={{ fontSize: 12 }}>QZ Tray {print.bagli ? 'bağlı' : 'bağlı değil'}</span>
+            {!print.bagli && <Button size="sm" icon={Plug} onClick={print.baglan} loading={print.baglaniyor}>{print.baglaniyor?'Bağlanıyor…':'Bağlan'}</Button>}
+            {print.bagli && (
+              <>
+                <Select size="sm" value={print.fisYazici} onChange={e=>print.fisYaziciSec(e.target.value)} aria-label="Fiş yazıcısı" style={{ width: 'auto', minWidth: 180 }}>
+                  <option value="">Fiş yazıcısı seçin</option>
+                  {print.yazicilar.map(y=><option key={y} value={y}>{y}</option>)}
+                </Select>
+                {print.fisYazici
+                  ? <Badge tone="success">Z raporu bu yazıcıdan basılır</Badge>
+                  : <Badge tone="warning">Seçilmezse tarayıcıdan basılır</Badge>}
+              </>
             )}
-            <button onClick={()=>{setNakitAktarTutar(String(o.nakitNet||0));setNakitAktarModal(true);setKapanisModal(false)}}
-              style={{width:'100%',padding:'10px 0',borderRadius:10,marginBottom:10,
-                background:'rgba(86,204,242,.08)',border:'1px solid rgba(86,204,242,.25)',
-                color:'#56ccf2',fontSize:13,fontWeight:600}}>
-              🏦 Nakit Kasaya Aktar
-            </button>
-            <div style={{display:'flex',gap:10}}>
-              <button onClick={()=>setKapanisModal(false)} style={{flex:1,padding:'11px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-              <button onClick={kasaKapatFn} disabled={kayit} style={{flex:2,padding:'11px 0',borderRadius:10,background:'rgba(235,87,87,.12)',border:'1px solid rgba(235,87,87,.35)',color:'#eb5757',fontSize:13,fontWeight:700}}>
-                {kayit?'...':'Kasayı Kapat & Z Raporu'}
-              </button>
-            </div>
+            {print.hata && <span className="vg-error">{print.hata}</span>}
           </div>
-        </div>
-      )}
 
-      {/* Nakit Kasaya Aktar Modal */}
-      {nakitAktarModal && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.8)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:28,width:420}}>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text,marginBottom:18}}>🏦 Nakit Kasaya Aktar</div>
-            <div style={{padding:'12px 16px',background:'rgba(86,204,242,.06)',border:'1px solid rgba(86,204,242,.2)',borderRadius:10,marginBottom:16,fontSize:12,color:'#56ccf2'}}>
-              Günlük nakit tahsilatı "Nakit Kasa" banka hesabına aktarılacak.
-            </div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase'}}>Aktarılacak Tutar</div>
-            <div style={{position:'relative',marginBottom:18}}>
-              <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:t.textMuted}}>₺</span>
-              <input type="number" value={nakitAktarTutar} onChange={e=>setNakitAktarTutar(e.target.value)}
-                style={{width:'100%',padding:'12px 14px 12px 28px',borderRadius:10,background:t.input,
-                  border:`1px solid ${t.border}`,color:'#56ccf2',fontSize:18,fontWeight:700,outline:'none'}}/>
-            </div>
-            <div style={{display:'flex',gap:10}}>
-              <button onClick={()=>setNakitAktarModal(false)} style={{flex:1,padding:'11px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-              <button onClick={async()=>{
-                try {
-                  const res = await fetch(`${API_BASE}/kasa/nakite-aktar`, {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({ 
-                      kasaId: kasa.id, 
-                      tutar: Number(nakitAktarTutar),
-                      aciklama: `Günlük Kasa Nakdi - ${new Date().toLocaleDateString('tr-TR')} - ${magazaAd}`
-                    })
-                  })
-                  if (!res.ok) throw new Error('Aktarım başarısız')
-                  alert('✓ Nakit kasaya aktarıldı')
-                  setNakitAktarModal(false)
-                  // Aktarım tutarını kasa state'e ekle ve Z raporu bas
-                  setKasa(p => p ? {...p, nakitAktarim: Number(nakitAktarTutar)} : p)
-                  setTimeout(() => yazdirZRaporu(Number(nakitAktarTutar)), 300)
-                  yukle()
-                } catch(e) { alert('Hata: '+e.message) }
-              }} style={{flex:2,padding:'11px 0',borderRadius:10,background:'rgba(86,204,242,.12)',border:'1px solid rgba(86,204,242,.35)',color:'#56ccf2',fontSize:13,fontWeight:700}}>
-                ✓ Aktar
-              </button>
-            </div>
+          <div className="vg-grid-4">
+            <StatCard label="Kasadaki nakit" value={para(o.nakitNet)} meta={`Açılış ${para(kasa?.acilisBakiyesi||0)}`} />
+            <StatCard label="Toplam satış" value={para(o.toplamSatis)} meta={`${o.satisSayisi || 0} satış`} />
+            <StatCard label="İadeler" value={`−${para(o.toplamIade)}`} meta={`${o.iadeSayisi || 0} iade`} />
+            <StatCard label="Masraflar" value={`−${para(o.toplamMasraf)}`} />
           </div>
-        </div>
-      )}
+          <div className="vg-grid-3">
+            <div className="vg-tile"><div className="vg-tile__label">Nakit satış</div><div className="vg-tile__value">{para(o.nakitSatis)}</div></div>
+            <div className="vg-tile"><div className="vg-tile__label">Kartla satış</div><div className="vg-tile__value">{para(o.kartSatis)}</div></div>
+            <div className="vg-tile"><div className="vg-tile__label">Havale / EFT</div><div className="vg-tile__value">{para(o.havaleSatis)}</div></div>
+          </div>
 
-      {/* Manuel İşlem Modal */}
-      {islemModal && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.8)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:28,width:400}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:18}}>
-              <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text}}>Nakit Hareket</div>
-              <button onClick={()=>setIslemModal(false)} style={{color:t.textMuted,fontSize:20}}>✕</button>
-            </div>
-            <div style={{display:'flex',gap:8,marginBottom:16}}>
-              {[['giris','↑ Para Girişi','#6fcf97'],['cikis','↓ Para Çıkışı','#eb5757']].map(([k,l,c])=>(
-                <button key={k} onClick={()=>setIslemForm(p=>({...p,tip:k}))} style={{
-                  flex:1,padding:'10px 0',borderRadius:10,fontSize:13,
-                  background:islemForm.tip===k?`${c}18`:t.input,
-                  border:`1px solid ${islemForm.tip===k?c+'55':t.border}`,
-                  color:islemForm.tip===k?c:t.textMuted,fontWeight:islemForm.tip===k?600:400}}>{l}</button>
-              ))}
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:12}}>
-              <div>
-                <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase'}}>Tutar *</div>
-                <div style={{position:'relative'}}>
-                  <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:t.textMuted}}>₺</span>
-                  <input type="number" value={islemForm.tutar} onChange={e=>setIslemForm(p=>({...p,tutar:e.target.value}))}
-                    placeholder="0,00" autoFocus
-                    style={{width:'100%',padding:'11px 14px 11px 28px',borderRadius:10,background:t.input,
-                      border:`1px solid ${t.border}`,color:t.accent,fontSize:16,fontWeight:700,outline:'none'}}/>
+          <div className="vg-grid-3">
+            <Card title={`Bugünkü satışlar (${(kasa?.satislar||[]).length})`} padded={false} className="vg-span-2">
+              {(kasa?.satislar||[]).length === 0 ? <EmptyState compact title="Bugün satış yok" /> : (
+                <div className="vg-table-scroll" style={{ marginTop: 10 }}>
+                  <table className="vg-table">
+                    <thead><tr><th>Saat</th><th>Fiş no</th><th className="is-num">Kalem</th><th>Ödeme</th><th className="is-num">Tutar</th></tr></thead>
+                    <tbody>
+                      {kasa.satislar.map(s=>(
+                        <tr key={s.id}>
+                          <td className="vg-muted vg-num">{saat(s.tarih)}</td>
+                          <td className="vg-code">{s.fisNo}</td>
+                          <td className="is-num">{s.kalemler?.length||0}</td>
+                          <td className="vg-muted">{s.odemeler?.map(o=>o.tip).join(', ')}</td>
+                          <td className="is-num is-strong">{para(s.genelToplam)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-              <div>
-                <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase'}}>Açıklama</div>
-                <input value={islemForm.aciklama} onChange={e=>setIslemForm(p=>({...p,aciklama:e.target.value}))}
-                  placeholder="örn. Kasa açılış, avans..."
-                  style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,
-                    border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
-              </div>
-            </div>
-            <div style={{display:'flex',gap:10,marginTop:18}}>
-              <button onClick={()=>setIslemModal(false)} style={{flex:1,padding:'11px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-              <button onClick={islemEkleFn} disabled={kayit} style={{flex:2,padding:'11px 0',borderRadius:10,
-                background:islemForm.tip==='giris'?'rgba(111,207,151,.14)':'rgba(235,87,87,.12)',
-                border:`1px solid ${islemForm.tip==='giris'?'rgba(111,207,151,.4)':'rgba(235,87,87,.35)'}`,
-                color:islemForm.tip==='giris'?'#6fcf97':'#eb5757',fontSize:13,fontWeight:700}}>
-                {kayit?'...':'✓ Kaydet'}
-              </button>
-            </div>
+              )}
+            </Card>
+
+            <Card title="Manuel nakit hareketleri" padded={false}>
+              {(kasa?.islemler||[]).length === 0 ? <EmptyState compact title="Hareket yok" /> : (
+                <ul className="vg-list" style={{ marginTop: 6 }}>
+                  {kasa.islemler.map(i=>(
+                    <li key={i.id} className="vg-list__item">
+                      <div className="vg-list__main">
+                        <div className="vg-list__primary">{i.aciklama||'—'}</div>
+                        <div className="vg-list__secondary">{saat(i.tarih)} · {i.tip==='giris'?'Giriş':'Çıkış'}</div>
+                      </div>
+                      <div className={`vg-list__value ${i.tip==='giris'?'vg-text-success':'vg-text-critical'}`}>{i.tip==='giris'?'+':'−'}{para(i.tutar)}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
           </div>
-        </div>
+        </>
       )}
-    </div>
+
+      {/* Kasa açılış */}
+      {acilisModal && (
+        <Modal title="Kasayı aç" subtitle={magazaAd} onClose={()=>setAcilisModal(false)}
+          footer={<>
+            <Button variant="plain" onClick={()=>setAcilisModal(false)}>Vazgeç</Button>
+            <Button variant="primary" icon={LockOpen} onClick={kasaAcFn} loading={kayit}>Kasayı aç</Button>
+          </>}>
+          {tutarAlani('ka-acilis', acilisBakiye, setAcilisBakiye, 'Açılış nakit bakiyesi', { autoFocus: true })}
+        </Modal>
+      )}
+
+      {/* Kapanış */}
+      {kapanisModal && (
+        <Modal title="Kasayı kapat" subtitle={magazaAd} onClose={()=>setKapanisModal(false)}
+          footer={<>
+            <Button icon={Landmark} onClick={()=>{setNakitAktarTutar(String(o.nakitNet||0));setNakitAktarModal(true);setKapanisModal(false)}} style={{ marginRight: 'auto' }}>Nakdi kasaya aktar</Button>
+            <Button variant="plain" onClick={()=>setKapanisModal(false)}>Vazgeç</Button>
+            <Button variant="critical" icon={Lock} onClick={kasaKapatFn} loading={kayit}>Kapat ve Z raporu bas</Button>
+          </>}>
+          <div className="vg-tile">
+            <div className="vg-tile__label">Sistem hesabı (kasadaki nakit)</div>
+            <div className="vg-tile__value" style={{ fontSize: 20 }}>{para(o.nakitNet)}</div>
+          </div>
+          {tutarAlani('ka-kapanis', kapanisBakiye, setKapanisBakiye, 'Sayılan nakit')}
+          {kapanisBakiye && (
+            <Banner tone={Math.abs(fark) < 1 ? 'success' : 'critical'} title={Math.abs(fark) < 1 ? 'Kasa tutuyor.' : 'Kasada fark var.'}>
+              Fark: <strong className="vg-num">{fark >= 0 ? '+' : ''}{para(fark)}</strong>
+            </Banner>
+          )}
+        </Modal>
+      )}
+
+      {/* Nakit kasaya aktar */}
+      {nakitAktarModal && (
+        <Modal title="Nakdi kasaya aktar" onClose={()=>setNakitAktarModal(false)}
+          footer={<>
+            <Button variant="plain" onClick={()=>setNakitAktarModal(false)}>Vazgeç</Button>
+            <Button variant="primary" icon={Landmark} onClick={nakitAktar}>Aktar</Button>
+          </>}>
+          <Banner>Günlük nakit tahsilatı "Nakit Kasa" banka hesabına aktarılır ve Z raporu basılır.</Banner>
+          {tutarAlani('ka-aktar', nakitAktarTutar, setNakitAktarTutar, 'Aktarılacak tutar')}
+        </Modal>
+      )}
+
+      {/* Manuel işlem */}
+      {islemModal && (
+        <Modal title="Nakit hareketi" onClose={()=>setIslemModal(false)}
+          footer={<>
+            <Button variant="plain" onClick={()=>setIslemModal(false)}>Vazgeç</Button>
+            <Button variant="primary" icon={islemForm.tip==='giris'?ArrowUp:ArrowDown} onClick={islemEkleFn} loading={kayit}>{islemForm.tip==='giris'?'Girişi kaydet':'Çıkışı kaydet'}</Button>
+          </>}>
+          <Segmented label="Hareket tipi" value={islemForm.tip} onChange={v=>setIslemForm(p=>({...p,tip:v}))} className="vg-segmented--block"
+            options={[{ value:'giris', label:'Para girişi' }, { value:'cikis', label:'Para çıkışı' }]} />
+          {tutarAlani('ka-islem', islemForm.tutar, v=>setIslemForm(p=>({...p,tutar:v})), 'Tutar', { autoFocus: true })}
+          <Field label="Açıklama" htmlFor="ka-aciklama">
+            <Input id="ka-aciklama" value={islemForm.aciklama} onChange={e=>setIslemForm(p=>({...p,aciklama:e.target.value}))} placeholder="örn. kasa açılışı, avans" />
+          </Field>
+        </Modal>
+      )}
+    </Page>
   )
 }

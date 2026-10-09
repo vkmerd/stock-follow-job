@@ -1,5 +1,22 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useVega } from './VegaContext'
+import {
+  bankaHesaplariGetir, bankaHesapEkle, bankaHesapGuncelle, bankaHesapSil,
+  bankaHareketleriGetir, bankaHareketEkle, bankaHareketSil,
+  bankaKategorileriniGetir, bankaOzetGetir, bankaMutabakatGetir,
+  urunleriGetir
+, API_BASE } from './api'
+import { Page, PageHeader, Card, Button, IconButton, Field, Input, Select, Segmented, Tabs, Badge, Banner, Modal, StatCard, Tile, EmptyState, LoadingRows, MagazaIkon, Menu, onayla, toast } from './ui'
+import { Plus, Pencil, Trash2, ArrowRightLeft, Banknote, List, RefreshCw, X, MoreHorizontal, Landmark, CircleCheck, TriangleAlert, MapPin } from 'lucide-react'
+
+const para    = v => `₺${Number(v||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}`
+const tarihTR = iso => iso ? new Date(iso).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—'
+const saatTR  = iso => iso ? new Date(iso).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}) : ''
+const AYLAR   = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık']
+const BANKALAR = ['Ziraat Bankası','İş Bankası','Garanti BBVA','Yapı Kredi','Akbank','Halkbank','Vakıfbank','Denizbank','QNB Finansbank','TEB','HSBC','ING','Diğer']
+
 // ─── VİRMAN MODAL ────────────────────────────────────────────
-function VirmanModal({ hesaplar, magazalar=[], onKaydet, onKapat, t, tip='banka' }) {
+function VirmanModal({ hesaplar, magazalar=[], onKaydet, onKapat, tip='banka' }) {
   const bugun = new Date().toISOString().slice(0,10)
   const [form, setForm] = useState({ kaynakId:'', hedefId:'', magazaId:'', tutar:'', aciklama:'', tarih:bugun })
   const [kayit, setKayit] = useState(false)
@@ -19,200 +36,126 @@ function VirmanModal({ hesaplar, magazalar=[], onKaydet, onKapat, t, tip='banka'
       })
       .catch(()=>{ setKasaNakiti(0) })
   }, [tip, form.magazaId])
-  const inp = {padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none',width:'100%'}
 
   const kaydet = async () => {
-    if (!form.tutar || Number(form.tutar)<=0) return setHata('Tutar zorunlu')
-    if (tip==='banka' && (!form.kaynakId||!form.hedefId)) return setHata('İki hesap seçin')
-    if (tip==='banka' && form.kaynakId===form.hedefId) return setHata('Kaynak ve hedef aynı olamaz')
-    if (tip==='kasa' && !form.hedefId) return setHata('Hedef hesap seçin')
+    if (!form.tutar || Number(form.tutar)<=0) return setHata('Tutar zorunlu.')
+    if (tip==='banka' && (!form.kaynakId||!form.hedefId)) return setHata('Kaynak ve hedef hesabı seçin.')
+    if (tip==='banka' && form.kaynakId===form.hedefId) return setHata('Kaynak ve hedef aynı hesap olamaz.')
+    if (tip==='kasa' && !form.hedefId) return setHata('Hedef hesabı seçin.')
     setHata(''); setKayit(true)
     try {
       const res = await fetch(`${API_BASE}/banka/virman`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ tip, kaynakId:form.kaynakId||null, hedefId:form.hedefId, magazaId:form.magazaId||null, tutar:Number(form.tutar), aciklama:form.aciklama||null, tarih: form.tarih + 'T12:00:00.000Z' })
       })
-      if (!res.ok) { const e=await res.json(); throw new Error(e.hata||'Hata') }
+      if (!res.ok) { const e=await res.json(); throw new Error(e.hata||'Aktarım yapılamadı') }
+      toast.success(tip==='banka' ? 'Virman yapıldı.' : 'Kasadan bankaya aktarıldı.')
       onKaydet()
     } catch(e) { setHata(e.message) }
     finally { setKayit(false) }
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:'28px 32px',width:'100%',maxWidth:440}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:22}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text}}>
-            {tip==='banka'?'🔄 Bankalar Arası Virman':'💰 Kasadan Bankaya Aktarım'}
+    <Modal title={tip==='banka'?'Bankalar arası virman':'Kasadan bankaya aktarım'} onClose={onKapat}
+      footer={<>
+        <Button variant="plain" onClick={onKapat}>Vazgeç</Button>
+        <Button variant="primary" onClick={kaydet} loading={kayit}>{kayit?'Aktarılıyor…':'Aktarımı yap'}</Button>
+      </>}>
+      {tip==='banka'&&(
+        <Field label="Kaynak hesap" htmlFor="v-kaynak">
+          <Select id="v-kaynak" value={form.kaynakId} onChange={e=>g('kaynakId',e.target.value)}>
+            <option value="">Seçin</option>
+            {hesaplar.map(h=><option key={h.id} value={h.id}>{h.ad} · {h.banka} ({para(h.bakiye)})</option>)}
+          </Select>
+        </Field>
+      )}
+      {tip==='kasa'&&(
+        <>
+          <Field label="Kaynak mağaza" htmlFor="v-magaza">
+            <Select id="v-magaza" value={form.magazaId} onChange={e=>g('magazaId',e.target.value)}>
+              <option value="">Mağaza seçin</option>
+              {magazalar.map(m=><option key={m.id} value={m.id}>{m.ad}</option>)}
+            </Select>
+          </Field>
+          {kasaNakiti!==null&&<Banner icon={Banknote}>Kasadaki nakit: <strong className="vg-num">{para(kasaNakiti)}</strong></Banner>}
+        </>
+      )}
+      <Field label="Hedef hesap" htmlFor="v-hedef">
+        <Select id="v-hedef" value={form.hedefId} onChange={e=>g('hedefId',e.target.value)}>
+          <option value="">Seçin</option>
+          {hesaplar.filter(h=>h.id!==form.kaynakId).map(h=><option key={h.id} value={h.id}>{h.ad} · {h.banka}</option>)}
+        </Select>
+      </Field>
+      <div className="vg-grid-2">
+        <Field label="Tutar" htmlFor="v-tutar">
+          <div className="vg-input-group">
+            <Input id="v-tutar" type="number" className="vg-num" value={form.tutar} onChange={e=>g('tutar',e.target.value)} style={{ paddingRight: 28 }} />
+            <span className="vg-input-suffix">₺</span>
           </div>
-          <button onClick={onKapat} style={{color:t.textMuted,fontSize:20}}>✕</button>
-        </div>
-        <div style={{display:'flex',flexDirection:'column',gap:14}}>
-          {tip==='banka'&&(
-            <div>
-              <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>Kaynak Hesap</div>
-              <select value={form.kaynakId} onChange={e=>g('kaynakId',e.target.value)} style={inp}>
-                <option value="">Seçin...</option>
-                {hesaplar.map(h=><option key={h.id} value={h.id}>{h.ad} — {h.banka} (₺{Number(h.bakiye).toLocaleString('tr-TR')})</option>)}
-              </select>
-            </div>
-          )}
-          {tip==='kasa'&&(
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              <div>
-                <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>Kaynak Mağaza *</div>
-                <select value={form.magazaId} onChange={e=>g('magazaId',e.target.value)}
-                  style={{padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none',width:'100%'}}>
-                  <option value="">Mağaza seçin...</option>
-                  {magazalar.map(m=><option key={m.id} value={m.id}>{m.ad}</option>)}
-                </select>
-              </div>
-              {kasaNakiti!==null&&(
-                <div style={{padding:'10px 14px',background:`${t.accent}10`,border:`1px solid ${t.accent}33`,borderRadius:10,fontSize:12,color:t.accent}}>
-                  💰 Kasadaki Nakit: <strong>₺{Number(kasaNakiti).toLocaleString('tr-TR',{minimumFractionDigits:2})}</strong>
-                </div>
-              )}
-            </div>
-          )}
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>Hedef Hesap</div>
-            <select value={form.hedefId} onChange={e=>g('hedefId',e.target.value)} style={inp}>
-              <option value="">Seçin...</option>
-              {hesaplar.filter(h=>h.id!==form.kaynakId).map(h=><option key={h.id} value={h.id}>{h.ad} — {h.banka}</option>)}
-            </select>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>Tutar *</div>
-            <div style={{position:'relative'}}>
-              <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:t.textMuted}}>₺</span>
-              <input type="number" value={form.tutar} onChange={e=>g('tutar',e.target.value)} style={{...inp,paddingLeft:28,color:t.accent,fontSize:15,fontWeight:700}}/>
-            </div>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>Açıklama</div>
-            <input value={form.aciklama} onChange={e=>g('aciklama',e.target.value)} placeholder="Virman açıklaması..." style={inp}/>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>Tarih</div>
-            <input type="date" value={form.tarih} onChange={e=>g('tarih',e.target.value)} style={inp}/>
-          </div>
-        </div>
-        {hata&&<div style={{marginTop:12,padding:'8px 14px',background:'rgba(235,87,87,.1)',border:'1px solid rgba(235,87,87,.3)',borderRadius:8,fontSize:12,color:'#eb5757'}}>{hata}</div>}
-        <div style={{display:'flex',gap:10,marginTop:20}}>
-          <button onClick={onKapat} style={{flex:1,padding:'11px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-          <button onClick={kaydet} disabled={kayit} style={{flex:2,padding:'11px 0',borderRadius:10,background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:700}}>
-            {kayit?'Aktarılıyor...':'✓ Virmani Yap'}
-          </button>
-        </div>
+        </Field>
+        <Field label="Tarih" htmlFor="v-tarih"><Input id="v-tarih" type="date" value={form.tarih} onChange={e=>g('tarih',e.target.value)} /></Field>
       </div>
-    </div>
+      <Field label="Açıklama" htmlFor="v-aciklama"><Input id="v-aciklama" value={form.aciklama} onChange={e=>g('aciklama',e.target.value)} placeholder="Virman açıklaması" /></Field>
+      {hata&&<Banner tone="critical">{hata}</Banner>}
+    </Modal>
   )
 }
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useVega } from './VegaContext'
-import {
-  bankaHesaplariGetir, bankaHesapEkle, bankaHesapGuncelle, bankaHesapSil,
-  bankaHareketleriGetir, bankaHareketEkle, bankaHareketSil,
-  bankaKategorileriniGetir, bankaOzetGetir, bankaMutabakatGetir,
-  urunleriGetir
-, API_BASE } from './api'
-
-const para    = v => `₺${Number(v||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}`
-const tarihTR = iso => iso ? new Date(iso).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—'
-const saatTR  = iso => iso ? new Date(iso).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}) : ''
-const AYLAR   = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık']
-const BANKALAR = ['Ziraat Bankası','İş Bankası','Garanti BBVA','Yapı Kredi','Akbank','Halkbank','Vakıfbank','Denizbank','QNB Finansbank','TEB','HSBC','ING','Diğer']
-
-function HesapModal({ hesap, magazalar, onKaydet, onKapat, t }) {
+function HesapModal({ hesap, magazalar, onKaydet, onKapat }) {
   const bos = { ad:'', banka:BANKALAR[0], iban:'', magazaId:'', bakiye:0 }
   const [form, setForm] = useState(hesap ? { ad:hesap.ad, banka:hesap.banka, iban:hesap.iban||'', magazaId:hesap.magazaId||'' } : bos)
   const [hata, setHata] = useState('')
   const [kayit, setKayit] = useState(false)
-  const tutarRefs = useRef({}) // kalem id → input ref
-  const ekleRef = useRef(null)
-
-  // Son kalemin referans inputundan Tab → kalem ekle butonu
-  // Enter on kalem ekle → yeni kalem aç, tutarına fokus
-  const yeniKalemEkleVeFokusla = useCallback(() => {
-    const yeniKalem = bosKalem()
-    setKalemler(p => [...p, yeniKalem])
-    // Sonraki render'da yeni kalemin tutar inputuna fokus
-    setTimeout(() => {
-      tutarRefs.current[yeniKalem.id]?.focus()
-    }, 50)
-  }, [])
   const g = (k,v) => setForm(p=>({...p,[k]:v}))
 
   const kaydet = async () => {
-    if (!form.ad.trim()) return setHata('Hesap adı zorunlu')
+    if (!form.ad.trim()) return setHata('Hesap adı zorunlu.')
     setHata(''); setKayit(true)
     try {
       const temizForm = { ...form, bakiye: Number(form.bakiye)||0, magazaId: form.magazaId || null }
       if (hesap) await bankaHesapGuncelle(hesap.id, temizForm)
       else       await bankaHesapEkle(temizForm)
+      toast.success(hesap ? 'Hesap güncellendi.' : 'Hesap eklendi.')
       onKaydet()
     } catch(e) { setHata(e.message) }
     finally { setKayit(false) }
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:'28px 32px',width:'100%',maxWidth:460}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:22}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text}}>{hesap?'Hesap Düzenle':'Yeni Banka Hesabı'}</div>
-          <button onClick={onKapat} style={{color:t.textMuted,fontSize:20}}>✕</button>
-        </div>
-        <div style={{display:'flex',flexDirection:'column',gap:14}}>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>Hesap Adı *</div>
-            <input value={form.ad||''} onChange={e=>g('ad',e.target.value)} placeholder="örn. İş Bankası Merkez"
-              style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>IBAN</div>
-            <input value={form.iban||''} onChange={e=>g('iban',e.target.value)} placeholder="TR..."
-              style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>Banka</div>
-            <select value={form.banka} onChange={e=>g('banka',e.target.value)}
-              style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}>
-              {BANKALAR.map(b=><option key={b}>{b}</option>)}
-            </select>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>Mağaza</div>
-            <select value={form.magazaId||''} onChange={e=>g('magazaId',e.target.value)}
-              style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}>
-              <option value="">Genel</option>
-              {magazalar.map(m=><option key={m.id} value={m.id}>{m.ad}</option>)}
-            </select>
-          </div>
-          {!hesap && (
-            <div>
-              <div style={{fontSize:11,color:t.textMuted,marginBottom:5,textTransform:'uppercase',letterSpacing:.5}}>Başlangıç Bakiyesi</div>
-              <div style={{position:'relative'}}>
-                <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:t.textMuted}}>₺</span>
-                <input type="number" value={form.bakiye||0} onChange={e=>g('bakiye',e.target.value)}
-                  style={{width:'100%',padding:'10px 14px 10px 28px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.accent,fontSize:14,fontWeight:600,outline:'none'}}/>
-              </div>
-            </div>
-          )}
-        </div>
-        {hata&&<div style={{marginTop:12,padding:'8px 14px',background:'rgba(235,87,87,.1)',border:'1px solid rgba(235,87,87,.3)',borderRadius:8,fontSize:12,color:'#eb5757'}}>{hata}</div>}
-        <div style={{display:'flex',gap:10,marginTop:20}}>
-          <button onClick={onKapat} style={{flex:1,padding:'11px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-          <button onClick={kaydet} disabled={kayit} style={{flex:2,padding:'11px 0',borderRadius:10,background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:600}}>
-            {kayit?'Kaydediliyor...':hesap?'Güncelle':'Hesap Ekle'}
-          </button>
-        </div>
+    <Modal title={hesap?'Hesabı düzenle':'Yeni banka hesabı'} onClose={onKapat}
+      footer={<>
+        <Button variant="plain" onClick={onKapat}>Vazgeç</Button>
+        <Button variant="primary" onClick={kaydet} loading={kayit}>{kayit?'Kaydediliyor…':hesap?'Değişiklikleri kaydet':'Hesap ekle'}</Button>
+      </>}>
+      <Field label="Hesap adı" htmlFor="bh-ad"><Input id="bh-ad" value={form.ad||''} onChange={e=>g('ad',e.target.value)} placeholder="örn. İş Bankası Merkez" /></Field>
+      <Field label="IBAN" htmlFor="bh-iban"><Input id="bh-iban" mono value={form.iban||''} onChange={e=>g('iban',e.target.value)} placeholder="TR" /></Field>
+      <div className="vg-grid-2">
+        <Field label="Banka" htmlFor="bh-banka">
+          <Select id="bh-banka" value={form.banka} onChange={e=>g('banka',e.target.value)}>
+            {BANKALAR.map(b=><option key={b}>{b}</option>)}
+          </Select>
+        </Field>
+        <Field label="Mağaza" htmlFor="bh-magaza">
+          <Select id="bh-magaza" value={form.magazaId||''} onChange={e=>g('magazaId',e.target.value)}>
+            <option value="">Genel</option>
+            {magazalar.map(m=><option key={m.id} value={m.id}>{m.ad}</option>)}
+          </Select>
+        </Field>
       </div>
-    </div>
+      {!hesap && (
+        <Field label="Başlangıç bakiyesi" htmlFor="bh-bakiye">
+          <div className="vg-input-group">
+            <Input id="bh-bakiye" type="number" className="vg-num" value={form.bakiye||0} onChange={e=>g('bakiye',e.target.value)} style={{ paddingRight: 28 }} />
+            <span className="vg-input-suffix">₺</span>
+          </div>
+        </Field>
+      )}
+      {hata&&<Banner tone="critical">{hata}</Banner>}
+    </Modal>
   )
 }
 
-function HareketModal({ hesap, kategoriler, onKaydet, onKapat, t }) {
+function HareketModal({ hesap, kategoriler, onKaydet, onKapat }) {
   const bugun = new Date().toISOString().slice(0,10)
   const duzenle = hesap?.duzenle || null
 
@@ -243,14 +186,13 @@ function HareketModal({ hesap, kategoriler, onKaydet, onKapat, t }) {
   }, [])
 
   const gKalem = (id, k, v) => setKalemler(p => p.map(k2 => k2.id===id ? {...k2, [k]:v} : k2))
-  const kalemEkle = () => setKalemler(p => [...p, bosKalem()])
   const kalemSil = (id) => setKalemler(p => p.filter(k => k.id !== id))
 
   const genelToplam = kalemler.reduce((t, k) => t + (Number(k.tutar)||0), 0)
 
   const kaydet = async () => {
     const gecersiz = kalemler.find(k => !k.tutar || Number(k.tutar) <= 0)
-    if (gecersiz) return setHata('Tüm kalemlere geçerli tutar girin')
+    if (gecersiz) return setHata('Tüm kalemlere geçerli bir tutar girin.')
     setHata(''); setKayit(true)
     try {
       if (duzenle) await bankaHareketSil(duzenle.id)
@@ -266,126 +208,75 @@ function HareketModal({ hesap, kategoriler, onKaydet, onKapat, t }) {
           tarih: k.tarih + 'T12:00:00.000Z'
         })
       }
+      toast.success(duzenle ? 'Hareket güncellendi.' : `${kalemler.length} hareket kaydedildi.`)
       onKaydet()
     } catch(e) { setHata(e.message) }
     finally { setKayit(false) }
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:'28px 32px',width:'100%',maxWidth:580,maxHeight:'90vh',display:'flex',flexDirection:'column'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18,flexShrink:0}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text}}>Hareket — {hesap.ad}</div>
-          <button onClick={onKapat} style={{color:t.textMuted,fontSize:20}}>✕</button>
-        </div>
+    <Modal title={duzenle ? 'Hareketi düzenle' : 'Hareket ekle'} subtitle={hesap.ad} onClose={onKapat} size="lg"
+      footer={<>
+        {kalemler.length > 1 && <span className="vg-muted vg-num" style={{ marginRight: 'auto', fontSize: 13 }}>{kalemler.length} kalem · <strong style={{ color: 'var(--ink)' }}>{para(genelToplam)}</strong></span>}
+        <Button variant="plain" onClick={onKapat}>Vazgeç</Button>
+        <Button variant="primary" onClick={kaydet} loading={kayit}>
+          {kayit ? 'Kaydediliyor…' : kalemler.length > 1 ? `${kalemler.length} kalemi kaydet` : 'Kaydet'}
+        </Button>
+      </>}>
+      {kalemler.map((k, ki) => {
+        const aktifKat = kategoriler.filter(kat => kat.tip === k.tip)
+        return (
+          <div key={k.id} className="vg-tile vg-stack" style={{ gap: 10, padding: 12 }}>
+            <div className="vg-row" style={{ justifyContent: 'space-between' }}>
+              <Segmented label="Hareket tipi" value={k.tip} onChange={v=>gKalem(k.id,'tip',v)} options={[{ value:'gelir', label:'Gelir' }, { value:'gider', label:'Gider' }]} />
+              {kalemler.length > 1 && <Button size="sm" variant="critical-plain" icon={X} onClick={()=>kalemSil(k.id)}>Kaldır</Button>}
+            </div>
 
-        {/* Kalem listesi */}
-        <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:12}}>
-          {kalemler.map((k, ki) => {
-            const aktifKat = kategoriler.filter(kat => kat.tip === k.tip)
-            const renk = k.tip === 'gelir' ? '#6fcf97' : '#eb5757'
-            return (
-              <div key={k.id} style={{background:'rgba(255,255,255,.03)',border:`1px solid ${t.border}`,borderRadius:12,padding:'14px 16px'}}>
-                {/* Kalem başlık */}
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-                  <div style={{display:'flex',gap:6}}>
-                    {[['gelir','▲ Gelir','#6fcf97'],['gider','▼ Gider','#eb5757']].map(([tip,lbl,c])=>(
-                      <button key={tip} onClick={()=>gKalem(k.id,'tip',tip)} style={{padding:'5px 12px',borderRadius:8,fontSize:12,
-                        background:k.tip===tip?`${c}18`:t.input,border:`1px solid ${k.tip===tip?c+'55':t.border}`,
-                        color:k.tip===tip?c:t.textMuted,fontWeight:k.tip===tip?600:400}}>{lbl}</button>
-                    ))}
-                  </div>
-                  {kalemler.length > 1 && (
-                    <button onClick={()=>kalemSil(k.id)} style={{fontSize:12,color:'#eb5757',background:'none',border:'none',cursor:'pointer',padding:'4px 8px'}}>✕ Kaldır</button>
-                  )}
-                </div>
-
-                {/* Kategori */}
-                {aktifKat.length > 0 && (
-                  <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:10}}>
-                    {aktifKat.map(kat=>(
-                      <button key={kat.id} onClick={()=>gKalem(k.id,'kategoriId',kat.id)} style={{padding:'4px 10px',borderRadius:16,fontSize:11,
-                        background:k.kategoriId===kat.id?t.accentBg:t.input,border:`1px solid ${k.kategoriId===kat.id?t.accent+'55':t.border}`,
-                        color:k.kategoriId===kat.id?t.accent:t.textMuted}}>{kat.ad}</button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Tutar + Tarih */}
-                <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:8}}>
-                  <div style={{position:'relative'}}>
-                    <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:t.textMuted,fontSize:13}}>₺</span>
-                    <input
-                      ref={el => { tutarRefs.current[k.id] = el }}
-                      type="number" value={k.tutar}
-                      onChange={e=>gKalem(k.id,'tutar',e.target.value)}
-                      placeholder="0,00"
-                      style={{width:'100%',padding:'9px 12px 9px 26px',borderRadius:9,background:t.input,border:`1px solid ${renk}44`,color:renk,fontSize:15,fontWeight:700,outline:'none'}}/>
-                  </div>
-                  <input type="date" value={k.tarih} onChange={e=>gKalem(k.id,'tarih',e.target.value)}
-                    style={{width:'100%',padding:'9px 12px',borderRadius:9,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
-                </div>
-
-                {/* Açıklama + Referans */}
-                <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                  <input value={k.aciklama} onChange={e=>gKalem(k.id,'aciklama',e.target.value)} placeholder="Açıklama..."
-                    style={{width:'100%',padding:'8px 12px',borderRadius:9,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:12,outline:'none'}}/>
-                  <input value={k.referans} onChange={e=>gKalem(k.id,'referans',e.target.value)} placeholder="Referans no..."
-                    onKeyDown={e => {
-                      // Son kalemin referans inputundan Tab → kalem ekle butonuna fokus
-                      if (e.key === 'Tab' && !e.shiftKey && ki === kalemler.length - 1 && !duzenle) {
-                        e.preventDefault()
-                        ekleRef.current?.focus()
-                      }
-                    }}
-                    style={{width:'100%',padding:'8px 12px',borderRadius:9,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:12,outline:'none'}}/>
-                </div>
+            {aktifKat.length > 0 && (
+              <div className="vg-row" style={{ gap: 6 }}>
+                {aktifKat.map(kat=>(
+                  <button key={kat.id} type="button" className="vg-chip" aria-pressed={k.kategoriId===kat.id} onClick={()=>gKalem(k.id,'kategoriId',kat.id)}>{kat.ad}</button>
+                ))}
               </div>
-            )
-          })}
+            )}
 
-          {/* Kalem ekle butonu */}
-          {!duzenle && (
-            <button
-              ref={ekleRef}
-              onClick={yeniKalemEkleVeFokusla}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); yeniKalemEkleVeFokusla(); } }}
-              style={{padding:'10px 0',borderRadius:10,border:`1.5px dashed ${t.border}`,background:'transparent',color:t.textMuted,fontSize:13,cursor:'pointer'}}
-            >
-              + Kalem Ekle <span style={{fontSize:10,opacity:.5}}>(Enter)</span>
-            </button>
-          )}
-        </div>
-
-        {/* Genel toplam */}
-        {kalemler.length > 1 && (
-          <div style={{flexShrink:0,marginTop:12,padding:'10px 16px',background:'rgba(255,255,255,.03)',border:`1px solid ${t.border}`,borderRadius:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span style={{fontSize:12,color:t.textMuted}}>{kalemler.length} kalem · Genel Toplam</span>
-            <span style={{fontSize:18,fontWeight:800,color:t.accent}}>₺{genelToplam.toLocaleString('tr-TR',{minimumFractionDigits:2})}</span>
+            <div className="vg-grid-2" style={{ gap: 10 }}>
+              <div className="vg-input-group">
+                <Input ref={el => { tutarRefs.current[k.id] = el }} type="number" className="vg-num" value={k.tutar}
+                  onChange={e=>gKalem(k.id,'tutar',e.target.value)} placeholder="Tutar" aria-label="Tutar" style={{ paddingRight: 28, fontWeight: 600 }} />
+                <span className="vg-input-suffix">₺</span>
+              </div>
+              <Input type="date" value={k.tarih} onChange={e=>gKalem(k.id,'tarih',e.target.value)} aria-label="Tarih" />
+            </div>
+            <div className="vg-grid-2" style={{ gap: 10 }}>
+              <Input value={k.aciklama} onChange={e=>gKalem(k.id,'aciklama',e.target.value)} placeholder="Açıklama" aria-label="Açıklama" />
+              <Input mono value={k.referans} onChange={e=>gKalem(k.id,'referans',e.target.value)} placeholder="Referans no" aria-label="Referans no"
+                onKeyDown={e => {
+                  // Son kalemin referans inputundan Tab → kalem ekle butonuna fokus
+                  if (e.key === 'Tab' && !e.shiftKey && ki === kalemler.length - 1 && !duzenle) {
+                    e.preventDefault()
+                    ekleRef.current?.focus()
+                  }
+                }} />
+            </div>
           </div>
-        )}
+        )
+      })}
 
-        {hata && <div style={{flexShrink:0,marginTop:10,padding:'8px 14px',background:'rgba(235,87,87,.1)',border:'1px solid rgba(235,87,87,.3)',borderRadius:8,fontSize:12,color:'#eb5757'}}>{hata}</div>}
+      {!duzenle && (
+        <Button ref={ekleRef} icon={Plus} block onClick={yeniKalemEkleVeFokusla}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); yeniKalemEkleVeFokusla(); } }}
+          style={{ borderStyle: 'dashed', boxShadow: 'none' }}>
+          Kalem ekle <kbd className="vg-code vg-muted" style={{ fontSize: 11 }}>Enter</kbd>
+        </Button>
+      )}
 
-        <div style={{display:'flex',gap:10,marginTop:14,flexShrink:0}}>
-          <button onClick={onKapat} style={{flex:1,padding:'11px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-          <button onClick={kaydet} disabled={kayit} style={{flex:2,padding:'11px 0',borderRadius:10,
-            background:'rgba(201,184,130,.12)',border:`1px solid rgba(201,184,130,.35)`,
-            color:t.accent,fontSize:13,fontWeight:600}}>
-            {kayit ? 'Kaydediliyor...' : `${kalemler.length > 1 ? `${kalemler.length} Kalemi` : ''} Kaydet${kalemler.length > 1 ? ` (₺${genelToplam.toLocaleString('tr-TR',{minimumFractionDigits:2})})` : ''}`}
-          </button>
-        </div>
-      </div>
-    </div>
+      {hata && <Banner tone="critical">{hata}</Banner>}
+    </Modal>
   )
 }
 
-export default function BankaMutabakat({ t }) {
-  t = t || {
-    bg:'#0c0b09', card:'rgba(255,255,255,.04)', border:'rgba(255,255,255,.08)',
-    text:'#e8e0d4', textMuted:'#666', accent:'#c9b882', accentBg:'rgba(201,184,130,.15)',
-    input:'rgba(255,255,255,.06)', hover:'rgba(255,255,255,.06)', sidebar:'#0a0908'
-  }
+export default function BankaMutabakat() {
   const { magazalar:ctxMagazalar } = useVega()
   const magazalar = (ctxMagazalar||[]).filter(m=>m.tip!=='online')
   const simdi = new Date()
@@ -507,281 +398,201 @@ export default function BankaMutabakat({ t }) {
   const toplamBakiye = hesaplar.reduce((t,h)=>t+Number(h.bakiye),0)
   const filtreli = hareketler.filter(h=>tipFiltre==='hepsi'||h.tip===tipFiltre)
 
+  const hesapSil = async (h) => {
+    if (!await onayla(`${h.ad} hesabı silinecek.`, { title: 'Hesabı sil', confirmLabel: 'Hesabı sil' })) return
+    try { await bankaHesapSil(h.id); toast.success('Hesap silindi.'); yukle() } catch (e) { toast.error(e.message) }
+  }
+  const hareketSil = async (h) => {
+    if (!await onayla(`${para(h.tutar)} tutarındaki hareket silinecek.`, { title: 'Hareketi sil', confirmLabel: 'Hareketi sil' })) return
+    try { await bankaHareketSil(h.id); toast.success('Hareket silindi.'); yukle() } catch (e) { toast.error(e.message) }
+  }
+
   return (
-    <div style={{minHeight:'100vh',background:t.bg,color:t.text,fontFamily:"'DM Sans',sans-serif"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
-        *{box-sizing:border-box;} button{cursor:pointer;border:none;background:none;font-family:inherit;}
-        input,select{font-family:inherit;} select option{background:#1a1814;} tbody tr:hover td{background:rgba(255,255,255,.015);}
-        .vega-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-        .vega-scroll-x table{min-width:640px;}
-        @media (max-width:860px){
-          .vega-page-pad{padding-left:14px!important;padding-right:14px!important;}
-          .vega-grid-2{grid-template-columns:1fr!important;}
-        }
-        @media (max-width:600px){
-          .vega-header-row{flex-direction:column;align-items:stretch!important;}
-          .vega-header-actions{width:100%;flex-wrap:wrap!important;}
-          .vega-header-actions button{flex:1;min-width:140px;}
-        }
-      `}</style>
-
-      <div className="vega-page-pad" style={{padding:'22px 28px 0'}}>
-        <div className="vega-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,flexWrap:'wrap',gap:12}}>
-          <div>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:t.text}}>Banka & Mutabakat</div>
-            <div style={{fontSize:13,color:t.textMuted,marginTop:4}}>Toplam: <span style={{color:t.accent,fontWeight:600}}>{para(toplamBakiye)}</span></div>
-          </div>
-          <div className="vega-header-actions" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            {sekme==='hareketler'&&secilenHesap&&(
-              <button onClick={()=>setHareketModal(secilenHesap)} style={{padding:'9px 18px',borderRadius:10,background:'rgba(111,207,151,.12)',border:'1px solid rgba(111,207,151,.35)',color:'#6fcf97',fontSize:13,fontWeight:600}}>+ Hareket</button>
-            )}
-            <button onClick={()=>setVirmanModal('kasa')} style={{padding:'9px 18px',borderRadius:10,background:'rgba(242,201,76,.12)',border:'1px solid rgba(242,201,76,.35)',color:'#f2c94c',fontSize:13,fontWeight:600}}>💰 Kasadan Aktar</button>
-            <button onClick={()=>setVirmanModal('banka')} style={{padding:'9px 18px',borderRadius:10,background:'rgba(187,135,252,.12)',border:'1px solid rgba(187,135,252,.35)',color:'#bb87fc',fontSize:13,fontWeight:600}}>🔄 Virman</button>
-            <button onClick={()=>setHesapModal('yeni')} style={{padding:'9px 18px',borderRadius:10,background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:600}}>+ Yeni Hesap</button>
-          </div>
-        </div>
-
-        <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap'}}>
-          <select value={secilenHesap?.id||''} onChange={e=>setSecilenHesap(hesaplar.find(x=>x.id===e.target.value)||null)}
-            style={{padding:'8px 14px',borderRadius:20,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:12,outline:'none'}}>
-            <option value="">Tüm Hesaplar</option>
-            {hesaplar.map(h=><option key={h.id} value={h.id}>{h.ad} — {h.banka}</option>)}
-          </select>
-          <select value={ay} onChange={e=>setAy(Number(e.target.value))}
-            style={{padding:'8px 14px',borderRadius:20,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:12,outline:'none'}}>
+    <Page>
+      <PageHeader title="Banka ve mutabakat" subtitle={`Toplam bakiye ${para(toplamBakiye)}`}
+        actions={<>
+          {sekme==='hareketler'&&secilenHesap&&<Button icon={Plus} onClick={()=>setHareketModal(secilenHesap)}>Hareket ekle</Button>}
+          <Button icon={Banknote} onClick={()=>setVirmanModal('kasa')}>Kasadan aktar</Button>
+          <Button icon={ArrowRightLeft} onClick={()=>setVirmanModal('banka')}>Virman</Button>
+          <Button variant="primary" icon={Plus} onClick={()=>setHesapModal('yeni')}>Hesap ekle</Button>
+        </>}>
+        <div className="vg-row">
+          <Select size="sm" value={secilenHesap?.id||''} onChange={e=>setSecilenHesap(hesaplar.find(x=>x.id===e.target.value)||null)} aria-label="Hesap" style={{ width: 'auto' }}>
+            <option value="">Tüm hesaplar</option>
+            {hesaplar.map(h=><option key={h.id} value={h.id}>{h.ad} · {h.banka}</option>)}
+          </Select>
+          <Select size="sm" value={ay} onChange={e=>setAy(Number(e.target.value))} aria-label="Ay" style={{ width: 'auto' }}>
             {AYLAR.map((a,i)=><option key={i} value={i+1}>{a}</option>)}
-          </select>
-          <select value={yil} onChange={e=>setYil(Number(e.target.value))}
-            style={{padding:'8px 14px',borderRadius:20,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:12,outline:'none'}}>
+          </Select>
+          <Select size="sm" value={yil} onChange={e=>setYil(Number(e.target.value))} aria-label="Yıl" style={{ width: 'auto' }}>
             {[2024,2025,2026,2027].map(y=><option key={y}>{y}</option>)}
-          </select>
+          </Select>
         </div>
+        <Tabs value={sekme} onChange={setSekme} items={[
+          { id:'hesaplar', label:'Hesaplar' }, { id:'hareketler', label:'Hareketler' },
+          { id:'mutabakat', label:'Mutabakat' }, { id:'stok', label:'Stok değeri' },
+        ]} />
+      </PageHeader>
 
-        <div style={{display:'flex',gap:4,borderBottom:`1px solid ${t.border}`}}>
-          {[['hesaplar','🏦 Hesaplar'],['hareketler','📋 Hareketler'],['mutabakat','⚖ Mutabakat'],['stok','📦 Stok Değeri']].map(([k,l])=>(
-            <button key={k} onClick={()=>setSekme(k)} style={{padding:'10px 18px',borderRadius:'10px 10px 0 0',fontSize:13,
-              background:sekme===k?t.accentBg:'transparent',border:`1px solid ${sekme===k?t.accent+'44':'transparent'}`,
-              color:sekme===k?t.accent:t.textMuted}}>{l}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="vega-page-pad" style={{padding:'24px 28px 48px'}}>
-        {yukleniyor
-          ?<div style={{padding:60,textAlign:'center',color:t.textMuted}}>⏳ Yükleniyor...</div>
-          :<>
-            {sekme==='hesaplar'&&(
-              <div>
-                {ozet&&(
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:20}}>
-                    {[
-                      {l:`${AYLAR[ay-1]} Gelir`,v:para(ozet.gelir||0),c:'#6fcf97'},
-                      {l:`${AYLAR[ay-1]} Gider`,v:para(ozet.gider||0),c:'#eb5757'},
-                      {l:'Net',v:para((ozet.gelir||0)-(ozet.gider||0)),c:(ozet.gelir||0)>=(ozet.gider||0)?'#6fcf97':'#eb5757'},
-                    ].map(k=>(
-                      <div key={k.l} style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:12,padding:'14px 16px'}}>
-                        <div style={{fontSize:10,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.4}}>{k.l}</div>
-                        <div style={{fontSize:18,fontWeight:700,color:k.c,fontFamily:"'Playfair Display',serif"}}>{k.v}</div>
-                      </div>
-                    ))}
+      {yukleniyor ? <LoadingRows /> : <>
+        {sekme==='hesaplar'&&(
+          <>
+            {ozet&&(
+              <div className="vg-grid-3">
+                <StatCard label={`${AYLAR[ay-1]} gelir`} value={para(ozet.gelir||0)} />
+                <StatCard label={`${AYLAR[ay-1]} gider`} value={para(ozet.gider||0)} />
+                <StatCard label="Net" value={para((ozet.gelir||0)-(ozet.gider||0))}
+                  meta={<Badge tone={(ozet.gelir||0)>=(ozet.gider||0)?'success':'critical'}>{(ozet.gelir||0)>=(ozet.gider||0)?'Pozitif':'Negatif'}</Badge>} />
+              </div>
+            )}
+            <div className="vg-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+              {hesaplar.map(h=>(
+                <Card key={h.id} bodyClassName="vg-stack">
+                  <div className="vg-row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--accent-soft)', color: 'var(--accent)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Landmark className="vg-icon" /></div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600 }} className="vg-truncate">{h.ad}</div>
+                      <div className="vg-list__secondary">{h.banka}</div>
+                    </div>
+                    <Menu trigger={({ toggle }) => <IconButton icon={MoreHorizontal} label="İşlemler" size="sm" onClick={toggle} />}
+                      items={[
+                        { text: 'Düzenle', icon: Pencil, onClick: () => setHesapModal(h) },
+                        '-',
+                        { text: 'Sil', icon: Trash2, tone: 'critical', onClick: () => hesapSil(h) },
+                      ]} />
                   </div>
-                )}
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
-                  {hesaplar.map(h=>(
-                    <div key={h.id} style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20,borderLeft:`3px solid ${Number(h.bakiye)>=0?t.accent:'#eb5757'}`}}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
-                        <div>
-                          <div style={{fontSize:15,fontWeight:600,color:t.text}}>{h.ad}</div>
-                          <div style={{fontSize:12,color:t.textMuted}}>{h.banka}</div>
-                          {h.iban&&<div style={{fontSize:10,color:t.textMuted,fontFamily:'monospace',marginTop:2}}>{h.iban}</div>}
-                          {h.magaza&&<div style={{fontSize:11,color:t.textMuted,marginTop:2}}>📍 {h.magaza.ad}</div>}
-                        </div>
-                        <div style={{display:'flex',gap:6}}>
-                          <button onClick={()=>setHesapModal(h)} style={{padding:'4px 8px',borderRadius:7,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:11}}>✎</button>
-                          <button onClick={async()=>{if(!window.confirm('Silinsin mi?'))return;await bankaHesapSil(h.id);yukle()}}
-                            style={{padding:'4px 8px',borderRadius:7,background:'rgba(235,87,87,.06)',border:'1px solid rgba(235,87,87,.15)',color:'#eb5757',fontSize:11}}>✕</button>
-                        </div>
-                      </div>
-                      <div style={{fontSize:22,fontWeight:700,color:Number(h.bakiye)>=0?t.accent:'#eb5757',fontFamily:"'Playfair Display',serif",marginBottom:12}}>{para(h.bakiye)}</div>
-                      <div style={{display:'flex',gap:8}}>
-                        <button onClick={()=>{setSecilenHesap(h);setSekme('hareketler')}} style={{flex:1,padding:'7px 0',borderRadius:8,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:12}}>📋 Hareketler</button>
-                        <button onClick={()=>{setSecilenHesap(h);setHareketModal(h)}} style={{flex:1,padding:'7px 0',borderRadius:8,background:t.accentBg,border:`1px solid ${t.accent}44`,color:t.accent,fontSize:12,fontWeight:600}}>+ Hareket</button>
-                      </div>
-                    </div>
-                  ))}
-                  <button onClick={()=>setHesapModal('yeni')} style={{background:'transparent',border:`2px dashed ${t.border}`,borderRadius:14,padding:20,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,color:t.textMuted,fontSize:13,minHeight:140}}>
-                    <span style={{fontSize:28}}>+</span><span>Yeni Hesap</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {sekme==='hareketler'&&(
-              <div>
-                <div style={{display:'flex',gap:8,marginBottom:14}}>
-                  {[['hepsi','Tümü'],['gelir','▲ Gelir'],['gider','▼ Gider']].map(([k,l])=>(
-                    <button key={k} onClick={()=>setTipFiltre(k)} style={{padding:'7px 16px',borderRadius:20,fontSize:12,
-                      background:tipFiltre===k?t.accentBg:t.input,border:`1px solid ${tipFiltre===k?t.accent+'55':t.border}`,
-                      color:tipFiltre===k?t.accent:t.textMuted}}>{l}</button>
-                  ))}
-                </div>
-                {filtreli.length===0
-                  ?<div style={{padding:60,textAlign:'center',color:t.textMuted,background:t.card,border:`1px solid ${t.border}`,borderRadius:14}}>Hareket yok</div>
-                  :<div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,overflow:'hidden'}}>
-                    <div className="vega-scroll-x">
-                    <table style={{width:'100%',borderCollapse:'collapse'}}>
-                      <thead><tr style={{borderBottom:`1px solid ${t.border}`,background:t.hover}}>
-                        {['Tarih','Hesap','Kategori','Açıklama','Ref','Tutar','Bakiye',''].map(h=>(
-                          <th key={h} style={{padding:'11px 14px',fontSize:10,color:t.textMuted,fontWeight:500,textAlign:'left'}}>{h}</th>
-                        ))}
-                      </tr></thead>
-                      <tbody>
-                        {filtreli.map(h=>(
-                          <tr key={h.id} style={{borderBottom:`1px solid ${t.border}`}}>
-                            <td style={{padding:'11px 14px',fontSize:11,color:t.textMuted,whiteSpace:'nowrap'}}>
-                              <div>{tarihTR(h.tarih)}</div><div style={{fontSize:10}}>{saatTR(h.tarih)}</div>
-                            </td>
-                            <td style={{padding:'11px 14px',fontSize:12,color:t.text}}>{h.hesap?.ad||'—'}</td>
-                            <td style={{padding:'11px 14px'}}>{h.kategori?<span style={{fontSize:11,padding:'2px 8px',borderRadius:10,background:t.hover,color:t.textMuted}}>{h.kategori.ad}</span>:<span style={{color:t.textMuted,fontSize:11}}>—</span>}</td>
-                            <td style={{padding:'11px 14px',fontSize:12,color:t.text,maxWidth:160}}><div style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{h.aciklama||'—'}</div></td>
-                            <td style={{padding:'11px 14px',fontSize:11,color:t.textMuted,fontFamily:'monospace'}}>{h.referans||'—'}</td>
-                            <td style={{padding:'11px 14px',fontSize:14,fontWeight:700,color:h.tip==='gelir'?'#6fcf97':'#eb5757'}}>{h.tip==='gelir'?'+':'-'}{para(h.tutar)}</td>
-                            <td style={{padding:'11px 14px',fontSize:12,color:t.textMuted}}>{para(h.bakiye)}</td>
-                            <td style={{padding:'11px 14px'}}>
-                              <div style={{display:'flex',gap:4}}>
-                                <button onClick={()=>setHareketModal({...secilenHesap||hesaplar[0], duzenle:h})}
-                                  style={{fontSize:11,padding:'4px 8px',borderRadius:7,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted}}>✎</button>
-                                <button onClick={async()=>{if(!window.confirm('Silinsin mi?'))return;await bankaHareketSil(h.id);yukle()}}
-                                style={{fontSize:11,padding:'4px 8px',borderRadius:7,background:'rgba(235,87,87,.06)',border:'1px solid rgba(235,87,87,.15)',color:'#eb5757'}}>✕</button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    </div>
-                  </div>}
-              </div>
-            )}
-
-            {sekme==='mutabakat'&&(
-              <div>
-                {!mutabakat
-                  ?<div style={{padding:60,textAlign:'center',color:t.textMuted}}>⏳ Yükleniyor...</div>
-                  :<div style={{display:'flex',flexDirection:'column',gap:16}}>
-                    <div style={{padding:'16px 20px',borderRadius:14,
-                      background:mutabakat.mutabakatDurumu==='eslesti'?'rgba(111,207,151,.08)':'rgba(235,87,87,.08)',
-                      border:`1px solid ${mutabakat.mutabakatDurumu==='eslesti'?'rgba(111,207,151,.3)':'rgba(235,87,87,.3)'}`}}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
-                        <div>
-                          <div style={{fontSize:15,fontWeight:700,color:mutabakat.mutabakatDurumu==='eslesti'?'#6fcf97':'#eb5757',marginBottom:4}}>
-                            {mutabakat.mutabakatDurumu==='eslesti'?'✓ Mutabakat Tamam':'⚠ Mutabakat Uyuşmazlığı'}
-                          </div>
-                          <div style={{fontSize:12,color:t.textMuted}}>{AYLAR[ay-1]} {yil} · {secilenHesap?.ad||'Tüm Hesaplar'}</div>
-                        </div>
-                        <div style={{textAlign:'right'}}>
-                          <div style={{fontSize:11,color:t.textMuted,marginBottom:2}}>Fark</div>
-                          <div style={{fontSize:22,fontWeight:700,color:mutabakat.fark===0?'#6fcf97':'#f2c94c'}}>{mutabakat.fark>=0?'+':''}{para(mutabakat.fark||0)}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                      {[
-                        {baslik:'Satış Ödemeleri (Kart+Havale)',renk:'#56ccf2',toplam:mutabakat.toplamSatisOdeme||0,
-                          liste:mutabakat.satisOdemeleri||[],
-                          render:o=><><div style={{color:t.text,fontWeight:500}}>{o.satis?.fisNo}</div><div style={{color:t.textMuted,fontSize:11}}>{tarihTR(o.satis?.tarih)} · {o.tip}</div></>},
-                        {baslik:'Banka Gelir Hareketleri',renk:'#6fcf97',toplam:mutabakat.toplamBankaGelir||0,
-                          liste:mutabakat.bankaHareketleri||[],
-                          render:h=><><div style={{color:t.text,fontWeight:500}}>{h.aciklama||h.referans||'—'}</div><div style={{color:t.textMuted,fontSize:11}}>{tarihTR(h.tarih)} · {h.hesap?.ad}</div></>},
-                      ].map(panel=>(
-                        <div key={panel.baslik} style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:18}}>
-                          <div style={{fontSize:11,color:panel.renk,marginBottom:8,textTransform:'uppercase',letterSpacing:.5}}>{panel.baslik}</div>
-                          <div style={{fontSize:22,fontWeight:700,color:t.accent,marginBottom:14}}>{para(panel.toplam)}</div>
-                          <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:280,overflowY:'auto'}}>
-                            {panel.liste.length===0
-                              ?<div style={{color:t.textMuted,fontSize:12,textAlign:'center',padding:20}}>Kayıt yok</div>
-                              :panel.liste.map((item,i)=>(
-                                <div key={i} style={{display:'flex',justifyContent:'space-between',padding:'8px 10px',background:t.hover,borderRadius:8,fontSize:12}}>
-                                  <div>{panel.render(item)}</div>
-                                  <span style={{color:panel.renk,fontWeight:600}}>{para(item.tutar)}</span>
-                                </div>
-                              ))
-                            }
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  <div>
+                    <div className="vg-stat__value" style={{ color: Number(h.bakiye) < 0 ? 'var(--critical)' : undefined }}>{para(h.bakiye)}</div>
+                    {h.iban&&<div className="vg-code vg-muted" style={{ marginTop: 2 }}>{h.iban}</div>}
+                    {h.magaza&&<div className="vg-row vg-muted" style={{ gap: 4, fontSize: 12, marginTop: 2 }}><MapPin className="vg-icon" style={{ width: 13, height: 13 }} />{h.magaza.ad}</div>}
                   </div>
-                }
-              </div>
-            )}
-
-            {sekme==='stok'&&(
-              <div>
-                {stokYukleniyor&&!stokYuklendi
-                  ?<div style={{padding:60,textAlign:'center',color:t.textMuted}}>⏳ Stok verileri çekiliyor (Silver Polo'nun tamamı dahil biraz sürebilir)...</div>
-                  :<div style={{display:'flex',flexDirection:'column',gap:20}}>
-
-                    {/* Genel toplam */}
-                    <div style={{background:t.card,border:`1px solid ${t.accent}44`,borderRadius:14,padding:'18px 20px'}}>
-                      <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Genel Toplam Stok Değeri</div>
-                      <div style={{fontSize:26,fontWeight:700,color:t.accent,fontFamily:"'Playfair Display',serif"}}>
-                        {para(yerelToplamDeger+nasbagToplamDeger+silverpoloToplamDeger)}
-                      </div>
-                      <div style={{fontSize:12,color:t.textMuted,marginTop:4}}>Yerel + Nas Bag + Silver Polo (tedarikçi maliyeti üzerinden)</div>
-                    </div>
-
-                    {/* Mağaza bazlı yerel stok */}
-                    <div>
-                      <div style={{fontSize:13,fontWeight:600,color:t.text,marginBottom:10}}>🏪 Mağaza Bazlı Stok Değeri (Yerel)</div>
-                      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:12}}>
-                        {magazaStokDegeri.map(({magaza,adet,deger,cesit})=>(
-                          <div key={magaza.id} style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:'16px 18px'}}>
-                            <div style={{fontSize:13,fontWeight:600,color:t.text,marginBottom:8}}>{magaza.ikon||'🏪'} {magaza.ad}</div>
-                            <div style={{fontSize:20,fontWeight:700,color:t.accent,fontFamily:"'Playfair Display',serif",marginBottom:6}}>{para(deger)}</div>
-                            <div style={{fontSize:11,color:t.textMuted}}>{adet} adet · {cesit} ürün çeşidi</div>
-                          </div>
-                        ))}
-                        <div style={{background:'rgba(201,184,130,.06)',border:`1px solid ${t.accent}33`,borderRadius:14,padding:'16px 18px'}}>
-                          <div style={{fontSize:13,fontWeight:600,color:t.accent,marginBottom:8}}>📊 Yerel Toplam</div>
-                          <div style={{fontSize:20,fontWeight:700,color:t.accent,fontFamily:"'Playfair Display',serif",marginBottom:6}}>{para(yerelToplamDeger)}</div>
-                          <div style={{fontSize:11,color:t.textMuted}}>{yerelToplamAdet} adet · tüm mağazalar</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tedarikçi stokları (Nas Bag / Silver Polo) */}
-                    <div>
-                      <div style={{fontSize:13,fontWeight:600,color:t.text,marginBottom:10}}>📦 Tedarikçi Stok Değeri (Canlı XML)</div>
-                      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:12}}>
-                        <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:'16px 18px'}}>
-                          <div style={{fontSize:13,fontWeight:600,color:t.text,marginBottom:8}}>Nas Bag</div>
-                          <div style={{fontSize:20,fontWeight:700,color:'#56ccf2',fontFamily:"'Playfair Display',serif",marginBottom:6}}>{para(nasbagToplamDeger)}</div>
-                          <div style={{fontSize:11,color:t.textMuted}}>{nasbagToplamAdet} adet · {nasbagStok.length} kalem · Fiyat1 üzerinden</div>
-                        </div>
-                        <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:'16px 18px'}}>
-                          <div style={{fontSize:13,fontWeight:600,color:t.text,marginBottom:8}}>Silver Polo</div>
-                          <div style={{fontSize:20,fontWeight:700,color:'#bb87fc',fontFamily:"'Playfair Display',serif",marginBottom:6}}>{para(silverpoloToplamDeger)}</div>
-                          <div style={{fontSize:11,color:t.textMuted}}>{silverpoloToplamAdet} adet · {silverpoloStok.length} kalem · alış fiyatı üzerinden</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button onClick={()=>{setStokYuklendi(false)}} style={{alignSelf:'flex-start',padding:'8px 16px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:12}}>
-                      ↻ Stok Verilerini Yenile
-                    </button>
+                  <div className="vg-row" style={{ flexWrap: 'nowrap' }}>
+                    <Button size="sm" icon={List} onClick={()=>{setSecilenHesap(h);setSekme('hareketler')}} style={{ flex: 1 }}>Hareketler</Button>
+                    <Button size="sm" icon={Plus} onClick={()=>{setSecilenHesap(h);setHareketModal(h)}} style={{ flex: 1 }}>Hareket ekle</Button>
                   </div>
-                }
-              </div>
-            )}
+                </Card>
+              ))}
+              <button type="button" onClick={()=>setHesapModal('yeni')} className="vg-card vg-card--interactive" style={{
+                border:'1px dashed var(--line-input)',boxShadow:'none',background:'transparent',minHeight:140,
+                display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,color:'var(--ink-muted)',font:'inherit',cursor:'pointer'}}>
+                <Plus className="vg-icon vg-icon--lg" /> Yeni hesap
+              </button>
+            </div>
           </>
-        }
-      </div>
+        )}
 
-      {virmanModal&&<VirmanModal hesaplar={hesaplar} magazalar={magazalar} tip={virmanModal} t={t} onKaydet={()=>{setVirmanModal(null);yukle()}} onKapat={()=>setVirmanModal(null)}/>}
-      {hesapModal&&<HesapModal hesap={hesapModal==='yeni'?null:hesapModal} magazalar={magazalar} t={t} onKaydet={()=>{setHesapModal(null);yukle()}} onKapat={()=>setHesapModal(null)}/>}
-      {hareketModal&&<HareketModal hesap={hareketModal} kategoriler={kategoriler} t={t} onKaydet={()=>{setHareketModal(null);yukle()}} onKapat={()=>setHareketModal(null)}/>}
-    </div>
+        {sekme==='hareketler'&&(
+          <div className="vg-table-wrap">
+            <div className="vg-table-toolbar">
+              <Segmented label="Hareket tipi" value={tipFiltre} onChange={setTipFiltre} options={[{ value:'hepsi', label:'Tümü' }, { value:'gelir', label:'Gelir' }, { value:'gider', label:'Gider' }]} />
+              {secilenHesap && <Badge dot={false}>{secilenHesap.ad}</Badge>}
+            </div>
+            {filtreli.length===0 ? <EmptyState icon={List} title="Hareket yok" /> : (
+              <div className="vg-table-scroll">
+                <table className="vg-table" style={{ minWidth: 860 }}>
+                  <thead><tr><th>Tarih</th><th>Hesap</th><th>Kategori</th><th>Açıklama</th><th>Referans</th><th className="is-num">Tutar</th><th className="is-num">Bakiye</th><th></th></tr></thead>
+                  <tbody>
+                    {filtreli.map(h=>(
+                      <tr key={h.id}>
+                        <td className="vg-nowrap"><div>{tarihTR(h.tarih)}</div><div className="vg-list__secondary">{saatTR(h.tarih)}</div></td>
+                        <td>{h.hesap?.ad||'—'}</td>
+                        <td>{h.kategori?<Badge dot={false}>{h.kategori.ad}</Badge>:<span className="vg-muted">—</span>}</td>
+                        <td style={{ maxWidth: 200 }}><div className="vg-truncate">{h.aciklama||'—'}</div></td>
+                        <td className="vg-code vg-muted">{h.referans||'—'}</td>
+                        <td className={`is-num is-strong ${h.tip==='gelir'?'vg-text-success':''}`}>{h.tip==='gelir'?'+':'−'}{para(h.tutar)}</td>
+                        <td className="is-num vg-muted">{para(h.bakiye)}</td>
+                        <td>
+                          <div className="vg-row" style={{ gap: 2, flexWrap: 'nowrap' }}>
+                            <IconButton icon={Pencil} label="Düzenle" size="sm" onClick={()=>setHareketModal({...secilenHesap||hesaplar[0], duzenle:h})} />
+                            <IconButton icon={Trash2} label="Sil" size="sm" variant="critical-plain" onClick={()=>hareketSil(h)} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {sekme==='mutabakat'&&(
+          !mutabakat ? <LoadingRows /> : (
+            <>
+              <Banner tone={mutabakat.mutabakatDurumu==='eslesti'?'success':'critical'}
+                icon={mutabakat.mutabakatDurumu==='eslesti'?CircleCheck:TriangleAlert}
+                title={mutabakat.mutabakatDurumu==='eslesti'?'Mutabakat tamam.':'Mutabakat uyuşmazlığı.'}
+                action={<div style={{ textAlign: 'right' }}><div className="vg-help">Fark</div><div className="vg-num" style={{ fontSize: 18, fontWeight: 600 }}>{mutabakat.fark>=0?'+':''}{para(mutabakat.fark||0)}</div></div>}>
+                {AYLAR[ay-1]} {yil} · {secilenHesap?.ad||'Tüm hesaplar'}
+              </Banner>
+
+              <div className="vg-grid-2">
+                {[
+                  {baslik:'Satış ödemeleri (kart + havale)',toplam:mutabakat.toplamSatisOdeme||0,
+                    liste:mutabakat.satisOdemeleri||[],
+                    render:o=>({ ana:<span className="vg-code">{o.satis?.fisNo}</span>, alt:`${tarihTR(o.satis?.tarih)} · ${o.tip}` })},
+                  {baslik:'Banka gelir hareketleri',toplam:mutabakat.toplamBankaGelir||0,
+                    liste:mutabakat.bankaHareketleri||[],
+                    render:h=>({ ana:h.aciklama||h.referans||'—', alt:`${tarihTR(h.tarih)} · ${h.hesap?.ad||''}` })},
+                ].map(panel=>(
+                  <Card key={panel.baslik} title={panel.baslik} subtitle={<span className="vg-num" style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)' }}>{para(panel.toplam)}</span>} padded={false}>
+                    {panel.liste.length===0 ? <EmptyState compact title="Kayıt yok" /> : (
+                      <ul className="vg-list" style={{ maxHeight: 300, overflowY: 'auto', marginTop: 8 }}>
+                        {panel.liste.map((item,i)=>{
+                          const r = panel.render(item)
+                          return (
+                            <li key={i} className="vg-list__item">
+                              <div className="vg-list__main"><div className="vg-list__primary">{r.ana}</div><div className="vg-list__secondary">{r.alt}</div></div>
+                              <div className="vg-list__value">{para(item.tutar)}</div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            </>
+          )
+        )}
+
+        {sekme==='stok'&&(
+          stokYukleniyor&&!stokYuklendi ? (
+            <div className="vg-card"><EmptyState icon={RefreshCw} title="Stok verileri çekiliyor" text="Silver Polo'nun tüm ürünleri dahil olduğu için biraz sürebilir." /></div>
+          ) : (
+            <>
+              <StatCard label="Genel toplam stok değeri" value={para(yerelToplamDeger+nasbagToplamDeger+silverpoloToplamDeger)}
+                meta="Yerel + Nas Bag + Silver Polo (tedarikçi maliyeti üzerinden)" />
+
+              <Card title="Mağaza bazlı stok değeri (yerel)">
+                <div className="vg-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
+                  {magazaStokDegeri.map(({magaza,adet,deger,cesit})=>(
+                    <Tile key={magaza.id} label={<span className="vg-row" style={{ gap: 6 }}><MagazaIkon ikon={magaza.ikon} style={{ width: 14, height: 14 }} />{magaza.ad}</span>} value={para(deger)}>
+                      <div className="vg-help">{adet} adet · {cesit} ürün çeşidi</div>
+                    </Tile>
+                  ))}
+                  <Tile label="Yerel toplam" value={para(yerelToplamDeger)} style={{ background: 'var(--accent-soft)' }}>
+                    <div className="vg-help">{yerelToplamAdet} adet · tüm mağazalar</div>
+                  </Tile>
+                </div>
+              </Card>
+
+              <Card title="Tedarikçi stok değeri (canlı XML)">
+                <div className="vg-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
+                  <Tile label="Nas Bag" value={para(nasbagToplamDeger)}><div className="vg-help">{nasbagToplamAdet} adet · {nasbagStok.length} kalem · Fiyat1 üzerinden</div></Tile>
+                  <Tile label="Silver Polo" value={para(silverpoloToplamDeger)}><div className="vg-help">{silverpoloToplamAdet} adet · {silverpoloStok.length} kalem · alış fiyatı üzerinden</div></Tile>
+                </div>
+              </Card>
+
+              <div><Button icon={RefreshCw} onClick={()=>{setStokYuklendi(false)}}>Stok verilerini yenile</Button></div>
+            </>
+          )
+        )}
+      </>}
+
+      {virmanModal&&<VirmanModal hesaplar={hesaplar} magazalar={magazalar} tip={virmanModal} onKaydet={()=>{setVirmanModal(null);yukle()}} onKapat={()=>setVirmanModal(null)}/>}
+      {hesapModal&&<HesapModal hesap={hesapModal==='yeni'?null:hesapModal} magazalar={magazalar} onKaydet={()=>{setHesapModal(null);yukle()}} onKapat={()=>setHesapModal(null)}/>}
+      {hareketModal&&<HareketModal hesap={hareketModal} kategoriler={kategoriler} onKaydet={()=>{setHareketModal(null);yukle()}} onKapat={()=>setHareketModal(null)}/>}
+    </Page>
   )
 }

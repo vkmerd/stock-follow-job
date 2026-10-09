@@ -1,82 +1,73 @@
 import { useState, useEffect } from 'react'
 import * as api from './api'
+import { Page, PageHeader, Button, Field, Input, Textarea, SearchInput, Segmented, Badge, Banner, Modal, StatCard, Tile, EmptyState, LoadingRows, toast } from './ui'
+import { Plus, Pencil, HandCoins, AlarmClock, ArrowLeftRight } from 'lucide-react'
 
 const para = v => `₺${Number(v||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}`
 const tarihTR = iso => iso ? new Date(iso).toLocaleDateString('tr-TR') : '—'
 
 const TIP_RENK = {
-  borc:      { label: 'Borç',      renk: '#eb5757', ikon: '▲' },
-  alacak:    { label: 'Alacak',    renk: '#f2c94c', ikon: '▲' },
-  odeme:     { label: 'Ödeme',     renk: '#6fcf97', ikon: '▼' },
-  tahsilat:  { label: 'Tahsilat',  renk: '#6fcf97', ikon: '▼' },
+  borc:      { label: 'Borç',      ton: 'critical' },
+  alacak:    { label: 'Alacak',    ton: 'warning' },
+  odeme:     { label: 'Ödeme',     ton: 'success' },
+  tahsilat:  { label: 'Tahsilat',  ton: 'success' },
 }
 
+const vadeMetni = gun => gun < 0 ? `${Math.abs(gun)} gün geçti` : gun === 0 ? 'Bugün vadesi doluyor' : `${gun} gün kaldı`
+const vadeTon = gun => gun < 0 ? 'critical' : gun <= 7 ? 'warning' : 'success'
+
 // ─── CARİ MODAL ───────────────────────────────────────────────
-function CariModal({ cari, onKaydet, onKapat, t }) {
+function CariModal({ cari, onKaydet, onKapat }) {
   const bos = { ad:'', telefon:'', email:'', adres:'', vergiNo:'', tip:'musteri', notlar:'' }
   const [form, setForm] = useState(cari ? {...cari} : bos)
   const [kayit, setKayit] = useState(false)
+  const [hata, setHata] = useState('')
   const g = (k,v) => setForm(p=>({...p,[k]:v}))
-  const inp = { width:'100%', padding:'9px 12px', borderRadius:10, background:t.input, border:`1px solid ${t.border}`, color:t.text, fontSize:13, outline:'none' }
 
   const kaydet = async () => {
-    if (!form.ad.trim()) return alert('Ad zorunlu')
-    setKayit(true)
+    if (!form.ad.trim()) return setHata('Ad zorunlu.')
+    setHata(''); setKayit(true)
     try {
       if (cari) await api.cariGuncelle(cari.id, form)
       else       await api.cariEkle(form)
+      toast.success(cari ? 'Cari hesap güncellendi.' : 'Cari hesap eklendi.')
       onKaydet()
-    } catch(e) { alert(e.message) }
+    } catch(e) { setHata(e.message) }
     finally { setKayit(false) }
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:28,width:'100%',maxWidth:460}}>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:20}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text}}>{cari?'Cari Düzenle':'Yeni Cari Hesap'}</div>
-          <button onClick={onKapat} style={{color:t.textMuted,fontSize:20}}>✕</button>
-        </div>
-        <div style={{display:'flex',gap:8,marginBottom:16}}>
-          {[['musteri','Müşteri'],['tedarikci','Tedarikçi']].map(([k,l])=>(
-            <button key={k} onClick={()=>g('tip',k)} style={{flex:1,padding:'8px 0',borderRadius:8,fontSize:13,
-              background:form.tip===k?t.accentBg:t.input,border:`1px solid ${form.tip===k?t.accent+'55':t.border}`,
-              color:form.tip===k?t.accent:t.textMuted,fontWeight:form.tip===k?600:400}}>{l}</button>
-          ))}
-        </div>
-        <div style={{display:'flex',flexDirection:'column',gap:12}}>
-          <div><div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Ad *</div><input value={form.ad} onChange={e=>g('ad',e.target.value)} style={inp}/></div>
-          <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-            <div><div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Telefon</div><input value={form.telefon||''} onChange={e=>g('telefon',e.target.value)} style={inp}/></div>
-            <div><div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Vergi No</div><input value={form.vergiNo||''} onChange={e=>g('vergiNo',e.target.value)} style={inp}/></div>
-          </div>
-          <div><div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Adres</div><input value={form.adres||''} onChange={e=>g('adres',e.target.value)} style={inp}/></div>
-          <div><div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Notlar</div><textarea value={form.notlar||''} onChange={e=>g('notlar',e.target.value)} rows={2} style={{...inp,resize:'vertical'}}/></div>
-        </div>
-        <div style={{display:'flex',gap:10,marginTop:20}}>
-          <button onClick={onKapat} style={{flex:1,padding:'10px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-          <button onClick={kaydet} disabled={kayit} style={{flex:2,padding:'10px 0',borderRadius:10,background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:600}}>
-            {kayit?'Kaydediliyor...':cari?'Güncelle':'Ekle'}
-          </button>
-        </div>
+    <Modal title={cari?'Cari hesabı düzenle':'Yeni cari hesap'} onClose={onKapat}
+      footer={<>
+        <Button variant="plain" onClick={onKapat}>Vazgeç</Button>
+        <Button variant="primary" onClick={kaydet} loading={kayit}>{kayit?'Kaydediliyor…':cari?'Değişiklikleri kaydet':'Hesap ekle'}</Button>
+      </>}>
+      <Segmented label="Cari tipi" value={form.tip} onChange={v=>g('tip',v)} className="vg-segmented--block"
+        options={[{ value:'musteri', label:'Müşteri' }, { value:'tedarikci', label:'Tedarikçi' }]} />
+      <Field label="Ad" htmlFor="c-ad"><Input id="c-ad" value={form.ad} onChange={e=>g('ad',e.target.value)} /></Field>
+      <div className="vg-grid-2">
+        <Field label="Telefon" htmlFor="c-tel"><Input id="c-tel" value={form.telefon||''} onChange={e=>g('telefon',e.target.value)} /></Field>
+        <Field label="Vergi no" htmlFor="c-vergi"><Input id="c-vergi" mono value={form.vergiNo||''} onChange={e=>g('vergiNo',e.target.value)} /></Field>
       </div>
-    </div>
+      <Field label="Adres" htmlFor="c-adres"><Input id="c-adres" value={form.adres||''} onChange={e=>g('adres',e.target.value)} /></Field>
+      <Field label="Notlar" htmlFor="c-not"><Textarea id="c-not" value={form.notlar||''} onChange={e=>g('notlar',e.target.value)} rows={2} /></Field>
+      {hata && <Banner tone="critical">{hata}</Banner>}
+    </Modal>
   )
 }
 
 // ─── HAREKET MODAL ────────────────────────────────────────────
-function HareketModal({ cari, onKaydet, onKapat, t }) {
-  const bugun = new Date().toISOString().slice(0,10)
+function HareketModal({ cari, onKaydet, onKapat }) {
   const [form, setForm] = useState({ tip: cari.tip==='tedarikci'?'borc':'alacak', tutar:'', aciklama:'', belgeNo:'', vadeTarihi:'' })
   const [kayit, setKayit] = useState(false)
+  const [hata, setHata] = useState('')
   const g = (k,v) => setForm(p=>({...p,[k]:v}))
-  const inp = { width:'100%', padding:'9px 12px', borderRadius:10, background:t.input, border:`1px solid ${t.border}`, color:t.text, fontSize:13, outline:'none' }
 
   const tipSecenekleri = cari.tip==='tedarikci' ? ['borc','odeme'] : ['alacak','tahsilat']
 
   const kaydet = async () => {
-    if (!form.tutar || Number(form.tutar) <= 0) return alert('Tutar zorunlu')
-    setKayit(true)
+    if (!form.tutar || Number(form.tutar) <= 0) return setHata('Tutar zorunlu.')
+    setHata(''); setKayit(true)
     try {
       await api.cariHareketEkle({
         cariId: cari.id,
@@ -87,74 +78,55 @@ function HareketModal({ cari, onKaydet, onKapat, t }) {
         bakiyeSonrasi: 0,
         vadeTarihi: form.vadeTarihi ? form.vadeTarihi + 'T12:00:00.000Z' : null,
       })
+      toast.success(`${TIP_RENK[form.tip]?.label} hareketi eklendi.`)
       onKaydet()
-    } catch(e) { alert(e.message) }
+    } catch(e) { setHata(e.message) }
     finally { setKayit(false) }
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:28,width:'100%',maxWidth:420}}>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:20}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text}}>Hareket Ekle — {cari.ad}</div>
-          <button onClick={onKapat} style={{color:t.textMuted,fontSize:20}}>✕</button>
+    <Modal title="Hareket ekle" subtitle={cari.ad} onClose={onKapat}
+      footer={<>
+        <Button variant="plain" onClick={onKapat}>Vazgeç</Button>
+        <Button variant="primary" onClick={kaydet} loading={kayit}>{kayit?'Kaydediliyor…':`${TIP_RENK[form.tip]?.label} ekle`}</Button>
+      </>}>
+      <Segmented label="Hareket tipi" value={form.tip} onChange={v=>g('tip',v)} className="vg-segmented--block"
+        options={tipSecenekleri.map(k=>({ value:k, label:TIP_RENK[k]?.label }))} />
+      <Field label="Tutar" htmlFor="h-tutar">
+        <div className="vg-input-group">
+          <Input id="h-tutar" type="number" className="vg-num" value={form.tutar} onChange={e=>g('tutar',e.target.value)} style={{ paddingRight: 28 }} />
+          <span className="vg-input-suffix">₺</span>
         </div>
-        <div style={{display:'flex',flexDirection:'column',gap:12}}>
-          <div style={{display:'flex',gap:8}}>
-            {tipSecenekleri.map(k=>(
-              <button key={k} onClick={()=>g('tip',k)} style={{flex:1,padding:'8px 0',borderRadius:8,fontSize:12,
-                background:form.tip===k?TIP_RENK[k]?.renk+'18':t.input,
-                border:`1px solid ${form.tip===k?TIP_RENK[k]?.renk+'44':t.border}`,
-                color:form.tip===k?TIP_RENK[k]?.renk:t.textMuted,fontWeight:form.tip===k?600:400}}>
-                {TIP_RENK[k]?.ikon} {TIP_RENK[k]?.label}
-              </button>
-            ))}
-          </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Tutar *</div>
-            <div style={{position:'relative'}}>
-              <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:t.textMuted}}>₺</span>
-              <input type="number" value={form.tutar} onChange={e=>g('tutar',e.target.value)}
-                style={{...inp,paddingLeft:28,fontSize:16,fontWeight:700,color:TIP_RENK[form.tip]?.renk}}/>
-            </div>
-          </div>
-          <div><div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Açıklama</div><input value={form.aciklama} onChange={e=>g('aciklama',e.target.value)} style={inp} placeholder="Fatura açıklaması..."/></div>
-          <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-            <div><div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Belge No</div><input value={form.belgeNo} onChange={e=>g('belgeNo',e.target.value)} style={inp} placeholder="F-001"/></div>
-            <div><div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Vade Tarihi</div><input type="date" value={form.vadeTarihi} onChange={e=>g('vadeTarihi',e.target.value)} style={inp}/></div>
-          </div>
-        </div>
-        <div style={{display:'flex',gap:10,marginTop:20}}>
-          <button onClick={onKapat} style={{flex:1,padding:'10px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-          <button onClick={kaydet} disabled={kayit} style={{flex:2,padding:'10px 0',borderRadius:10,
-            background:TIP_RENK[form.tip]?.renk+'18',border:`1px solid ${TIP_RENK[form.tip]?.renk}44`,
-            color:TIP_RENK[form.tip]?.renk,fontSize:13,fontWeight:600}}>
-            {kayit?'Kaydediliyor...':'+ Hareket Ekle'}
-          </button>
-        </div>
+      </Field>
+      <Field label="Açıklama" htmlFor="h-aciklama"><Input id="h-aciklama" value={form.aciklama} onChange={e=>g('aciklama',e.target.value)} placeholder="Fatura açıklaması" /></Field>
+      <div className="vg-grid-2">
+        <Field label="Belge no" htmlFor="h-belge"><Input id="h-belge" mono value={form.belgeNo} onChange={e=>g('belgeNo',e.target.value)} placeholder="F-001" /></Field>
+        <Field label="Vade tarihi" htmlFor="h-vade"><Input id="h-vade" type="date" value={form.vadeTarihi} onChange={e=>g('vadeTarihi',e.target.value)} /></Field>
       </div>
-    </div>
+      {hata && <Banner tone="critical">{hata}</Banner>}
+    </Modal>
   )
 }
 
 // ─── TAHSİLAT / ÖDEME MODAL ───────────────────────────────────
-function TahsilatModal({ hareket, cari, onKaydet, onKapat, t }) {
+function TahsilatModal({ hareket, cari, onKaydet, onKapat }) {
   const [tutar, setTutar] = useState(String(hareket.tutar))
   const [aciklama, setAciklama] = useState('')
   const [kayit, setKayit] = useState(false)
+  const [hata, setHata] = useState('')
   const karsiTip = hareket.tip === 'alacak' ? 'tahsilat' : 'odeme'
-  const inp = { width:'100%', padding:'9px 12px', borderRadius:10, background:t.input, border:`1px solid ${t.border}`, color:t.text, fontSize:13, outline:'none' }
+  const baslik = hareket.tip==='alacak' ? 'Tahsilat' : 'Ödeme'
 
   const kaydet = async () => {
-    if (!tutar || Number(tutar) <= 0) return alert('Tutar zorunlu')
-    setKayit(true)
+    if (!tutar || Number(tutar) <= 0) return setHata('Tutar zorunlu.')
+    setHata(''); setKayit(true)
     try {
       // Karşı hareket oluştur (tahsilat/ödeme)
       await api.cariHareketEkle({
         cariId: cari.id,
         tip: karsiTip,
         tutar: Number(tutar),
-        aciklama: aciklama || `${hareket.tip==='alacak'?'Tahsilat':'Ödeme'} - ${hareket.aciklama||hareket.belgeNo||''}`,
+        aciklama: aciklama || `${baslik} - ${hareket.aciklama||hareket.belgeNo||''}`,
         bakiyeSonrasi: 0,
       })
       // Orijinali ödendi işaretle
@@ -162,45 +134,39 @@ function TahsilatModal({ hareket, cari, onKaydet, onKapat, t }) {
         method:'PUT', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ odendi: true })
       })
+      toast.success(`${baslik} kaydedildi.`)
       onKaydet()
-    } catch(e) { alert(e.message) }
+    } catch(e) { setHata(e.message) }
     finally { setKayit(false) }
   }
 
+  const gun = hareket.vadeTarihi ? Math.ceil((new Date(hareket.vadeTarihi)-new Date())/86400000) : null
+
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.8)',zIndex:1100,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:28,width:'100%',maxWidth:400}}>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text,marginBottom:16}}>
-          {hareket.tip==='alacak'?'💰 Tahsilat':'💸 Ödeme'} — {cari.ad}
-        </div>
-        <div style={{padding:'12px 16px',background:'rgba(255,255,255,.03)',borderRadius:10,marginBottom:16,fontSize:12,color:t.textMuted}}>
-          Hareket: {hareket.aciklama||hareket.belgeNo||'—'} · ₺{Number(hareket.tutar).toLocaleString('tr-TR')}
-          {hareket.vadeTarihi&&<div style={{marginTop:4,color:new Date(hareket.vadeTarihi)<new Date()?'#eb5757':'#f2c94c'}}>Vade: {tarihTR(hareket.vadeTarihi)}</div>}
-        </div>
-        <div style={{display:'flex',flexDirection:'column',gap:12}}>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Tahsil Edilecek Tutar</div>
-            <div style={{position:'relative'}}>
-              <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:t.textMuted}}>₺</span>
-              <input type="number" value={tutar} onChange={e=>setTutar(e.target.value)}
-                style={{...inp,paddingLeft:28,fontSize:18,fontWeight:700,color:'#6fcf97'}}/>
-            </div>
-          </div>
-          <div><div style={{fontSize:11,color:t.textMuted,marginBottom:5}}>Açıklama</div><input value={aciklama} onChange={e=>setAciklama(e.target.value)} style={inp} placeholder="Opsiyonel..."/></div>
-        </div>
-        <div style={{display:'flex',gap:10,marginTop:20}}>
-          <button onClick={onKapat} style={{flex:1,padding:'10px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-          <button onClick={kaydet} disabled={kayit} style={{flex:2,padding:'10px 0',borderRadius:10,background:'rgba(111,207,151,.12)',border:'1px solid rgba(111,207,151,.35)',color:'#6fcf97',fontSize:13,fontWeight:700}}>
-            {kayit?'İşleniyor...':hareket.tip==='alacak'?'✓ Tahsil Et':'✓ Ödeme Yap'}
-          </button>
-        </div>
+    <Modal title={baslik} subtitle={cari.ad} onClose={onKapat}
+      footer={<>
+        <Button variant="plain" onClick={onKapat}>Vazgeç</Button>
+        <Button variant="primary" onClick={kaydet} loading={kayit}>{kayit?'İşleniyor…':hareket.tip==='alacak'?'Tahsil et':'Ödemeyi kaydet'}</Button>
+      </>}>
+      <div className="vg-tile">
+        <div className="vg-kv" style={{ padding: 0 }}><span>Hareket</span><span>{hareket.aciklama||hareket.belgeNo||'—'}</span></div>
+        <div className="vg-kv" style={{ padding: '4px 0 0' }}><span>Tutar</span><span>{para(hareket.tutar)}</span></div>
+        {gun !== null && <div style={{ marginTop: 6 }}><Badge tone={vadeTon(gun)}>Vade {tarihTR(hareket.vadeTarihi)} · {vadeMetni(gun)}</Badge></div>}
       </div>
-    </div>
+      <Field label={hareket.tip==='alacak'?'Tahsil edilecek tutar':'Ödenecek tutar'} htmlFor="t-tutar">
+        <div className="vg-input-group">
+          <Input id="t-tutar" type="number" className="vg-num" value={tutar} onChange={e=>setTutar(e.target.value)} style={{ paddingRight: 28 }} />
+          <span className="vg-input-suffix">₺</span>
+        </div>
+      </Field>
+      <Field label="Açıklama" help="İsteğe bağlı" htmlFor="t-aciklama"><Input id="t-aciklama" value={aciklama} onChange={e=>setAciklama(e.target.value)} /></Field>
+      {hata && <Banner tone="critical">{hata}</Banner>}
+    </Modal>
   )
 }
 
 // ─── HESAP DÖKÜMÜ ─────────────────────────────────────────────
-function HesapDokumu({ cari, onKapat, onGuncelle, t }) {
+function HesapDokumu({ cari, onKapat, onGuncelle, onDuzenle }) {
   const [hareketler, setHareketler] = useState([])
   const [tahsilatModal, setTahsilatModal] = useState(null)
   const [hareketModal, setHareketModal] = useState(false)
@@ -219,131 +185,101 @@ function HesapDokumu({ cari, onKapat, onGuncelle, t }) {
   const toplamBekleyen = bekleyenler.reduce((t,h)=>t+Number(h.tutar),0)
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:28,width:'100%',maxWidth:620,maxHeight:'85vh',overflowY:'auto'}}>
-        
-        {/* Başlık */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-          <div>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:20,color:t.text}}>{cari.ad}</div>
-            <div style={{fontSize:12,color:t.textMuted}}>{cari.tip==='musteri'?'Müşteri':'Tedarikçi'} · {cari.telefon||''}</div>
-          </div>
-          <button onClick={onKapat} style={{color:t.textMuted,fontSize:20}}>✕</button>
+    <>
+      <Modal title={cari.ad} subtitle={[cari.tip==='musteri'?'Müşteri':'Tedarikçi', cari.telefon].filter(Boolean).join(' · ')} onClose={onKapat} size="lg"
+        headerExtra={<Button size="sm" icon={Pencil} onClick={onDuzenle}>Düzenle</Button>}>
+        <div className="vg-grid-3" style={{ gap: 8 }}>
+          <Tile label="Güncel bakiye" value={para(Math.abs(guncelBakiye))} tone={guncelBakiye>0?'critical':guncelBakiye<0?'success':undefined}>
+            <div className="vg-help">{guncelBakiye>0?'Borçlu':guncelBakiye<0?'Alacaklı':'Dengede'}</div>
+          </Tile>
+          <Tile label="Bekleyen" value={para(toplamBekleyen)} tone={toplamBekleyen > 0 ? 'warning' : undefined}>
+            <div className="vg-help">{bekleyenler.length} hareket</div>
+          </Tile>
+          <Tile label="Toplam işlem" value={hareketler.length}><div className="vg-help">hareket</div></Tile>
         </div>
 
-        {/* Bakiye kartları */}
-        <div className="vega-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:20}}>
-          <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:10,padding:'14px 16px'}}>
-            <div style={{fontSize:10,color:t.textMuted,marginBottom:4}}>GÜNCEL BAKİYE</div>
-            <div style={{fontSize:18,fontWeight:700,color:guncelBakiye>0?'#eb5757':'#6fcf97'}}>
-              {para(Math.abs(guncelBakiye))}
-            </div>
-            <div style={{fontSize:11,color:t.textMuted}}>{guncelBakiye>0?'Borçlu':guncelBakiye<0?'Alacaklı':'Sıfır'}</div>
-          </div>
-          <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:10,padding:'14px 16px'}}>
-            <div style={{fontSize:10,color:t.textMuted,marginBottom:4}}>BEKLEYEN</div>
-            <div style={{fontSize:18,fontWeight:700,color:'#f2c94c'}}>{para(toplamBekleyen)}</div>
-            <div style={{fontSize:11,color:t.textMuted}}>{bekleyenler.length} hareket</div>
-          </div>
-          <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:10,padding:'14px 16px'}}>
-            <div style={{fontSize:10,color:t.textMuted,marginBottom:4}}>TOPLAM İŞLEM</div>
-            <div style={{fontSize:18,fontWeight:700,color:t.accent}}>{hareketler.length}</div>
-            <div style={{fontSize:11,color:t.textMuted}}>hareket</div>
-          </div>
-        </div>
-
-        {/* Bekleyen vadeler */}
         {bekleyenler.some(h=>h.vadeTarihi)&&(
-          <div style={{marginBottom:16,padding:'12px 16px',background:'rgba(242,201,76,.06)',border:'1px solid rgba(242,201,76,.2)',borderRadius:10}}>
-            <div style={{fontSize:11,color:'#f2c94c',fontWeight:600,marginBottom:8}}>⏰ Bekleyen Vadeler</div>
-            {bekleyenler.filter(h=>h.vadeTarihi).map(h=>{
-              const gun=Math.ceil((new Date(h.vadeTarihi)-new Date())/86400000)
-              return (
-                <div key={h.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                  <div style={{fontSize:12,color:t.text}}>{h.aciklama||h.belgeNo||'—'}</div>
-                  <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                    <span style={{fontSize:11,color:gun<0?'#eb5757':gun<=7?'#f2c94c':'#6fcf97'}}>
-                      {gun<0?`${Math.abs(gun)} gün geçti`:gun===0?'Bugün':`${gun} gün kaldı`}
+          <Banner tone="warning" icon={AlarmClock} title="Bekleyen vadeler">
+            <div className="vg-stack" style={{ gap: 6, marginTop: 6 }}>
+              {bekleyenler.filter(h=>h.vadeTarihi).map(h=>{
+                const gun=Math.ceil((new Date(h.vadeTarihi)-new Date())/86400000)
+                return (
+                  <div key={h.id} className="vg-row" style={{ justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+                    <span className="vg-truncate">{h.aciklama||h.belgeNo||'—'}</span>
+                    <span className="vg-row" style={{ flexWrap: 'nowrap', gap: 8 }}>
+                      <Badge tone={vadeTon(gun)} size="sm">{vadeMetni(gun)}</Badge>
+                      <strong className="vg-num">{para(h.tutar)}</strong>
+                      <Button size="sm" icon={HandCoins} onClick={()=>setTahsilatModal(h)}>{h.tip==='alacak'?'Tahsil et':'Öde'}</Button>
                     </span>
-                    <span style={{fontSize:12,fontWeight:700,color:t.accent}}>{para(h.tutar)}</span>
-                    <button onClick={()=>setTahsilatModal(h)} style={{fontSize:11,padding:'3px 8px',borderRadius:6,
-                      background:'rgba(111,207,151,.08)',border:'1px solid rgba(111,207,151,.25)',color:'#6fcf97',cursor:'pointer'}}>
-                      💰 Tahsil
-                    </button>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          </Banner>
         )}
 
-        {/* Hareket Ekle butonu */}
-        <button onClick={()=>setHareketModal(true)} style={{width:'100%',padding:'9px 0',borderRadius:10,
-          background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:600,marginBottom:16}}>
-          + Hareket Ekle
-        </button>
-
-        {/* Hareketler listesi */}
-        <div style={{display:'flex',flexDirection:'column',gap:6}}>
-          {hareketler.map(h=>{
-            const ht = TIP_RENK[h.tip] || TIP_RENK.borc
-            const gun = h.vadeTarihi ? Math.ceil((new Date(h.vadeTarihi)-new Date())/86400000) : null
-            return (
-              <div key={h.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-                padding:'12px 14px',background:t.card,border:`1px solid ${t.border}`,borderRadius:10,
-                opacity:h.odendi?0.5:1}}>
-                <div style={{flex:1}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
-                    <span style={{fontSize:10,padding:'2px 7px',borderRadius:20,background:ht.renk+'18',color:ht.renk,fontWeight:600}}>
-                      {ht.ikon} {ht.label}
-                    </span>
-                    {h.odendi&&<span style={{fontSize:10,padding:'2px 7px',borderRadius:20,background:'rgba(111,207,151,.12)',color:'#6fcf97'}}>✓ Ödendi</span>}
-                    {h.belgeNo&&<span style={{fontSize:10,color:t.textMuted,fontFamily:'monospace'}}>#{h.belgeNo}</span>}
-                  </div>
-                  <div style={{fontSize:12,color:t.text}}>{h.aciklama||'—'}</div>
-                  <div style={{fontSize:10,color:t.textMuted,marginTop:2}}>{tarihTR(h.tarih||h.olusturuldu)}</div>
-                  {gun!==null&&!h.odendi&&(
-                    <div style={{fontSize:10,fontWeight:600,color:gun<0?'#eb5757':gun<=7?'#f2c94c':'#6fcf97',marginTop:2}}>
-                      {gun<0?`⚠ ${Math.abs(gun)} gün geçti`:gun===0?'🔴 Bugün vadesi doluyor':`⏱ ${gun} gün kaldı`}
-                    </div>
-                  )}
-                </div>
-                <div style={{textAlign:'right'}}>
-                  <div style={{fontSize:15,fontWeight:700,color:h.odendi?'#555':ht.renk,textDecoration:h.odendi?'line-through':'none'}}>
-                    {['alacak','borc'].includes(h.tip)?'+':'-'}{para(h.tutar)}
-                  </div>
-                  {!h.odendi && (h.tip==='alacak'||h.tip==='borc') && (
-                    <button onClick={()=>setTahsilatModal(h)} style={{marginTop:4,fontSize:11,padding:'3px 8px',borderRadius:6,
-                      background:'rgba(111,207,151,.08)',border:'1px solid rgba(111,207,151,.25)',color:'#6fcf97',cursor:'pointer'}}>
-                      💰 {h.tip==='alacak'?'Tahsil Et':'Öde'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-          {hareketler.length===0&&<div style={{padding:30,textAlign:'center',color:t.textMuted}}>Hareket bulunamadı</div>}
+        <div className="vg-row" style={{ justifyContent: 'space-between' }}>
+          <div className="vg-section-label">Hareketler</div>
+          <Button size="sm" variant="primary" icon={Plus} onClick={()=>setHareketModal(true)}>Hareket ekle</Button>
         </div>
-      </div>
+
+        {hareketler.length===0 ? <EmptyState compact icon={ArrowLeftRight} title="Hareket yok" /> : (
+          <div className="vg-table-wrap" style={{ boxShadow: 'inset 0 0 0 1px var(--line)' }}>
+            <table className="vg-table">
+              <thead><tr><th>Tarih</th><th>Tip</th><th>Açıklama</th><th className="is-num">Tutar</th><th></th></tr></thead>
+              <tbody>
+                {hareketler.map(h=>{
+                  const ht = TIP_RENK[h.tip] || TIP_RENK.borc
+                  const gun = h.vadeTarihi ? Math.ceil((new Date(h.vadeTarihi)-new Date())/86400000) : null
+                  return (
+                    <tr key={h.id} className={h.odendi ? 'is-muted' : undefined}>
+                      <td className="vg-nowrap">{tarihTR(h.tarih||h.olusturuldu)}</td>
+                      <td><div className="vg-row" style={{ gap: 4 }}>
+                        <Badge tone={h.odendi ? 'neutral' : ht.ton}>{ht.label}</Badge>
+                        {h.odendi && <Badge tone="success" size="sm">Ödendi</Badge>}
+                      </div></td>
+                      <td>
+                        <div>{h.aciklama||'—'}</div>
+                        <div className="vg-row" style={{ gap: 6, marginTop: 2 }}>
+                          {h.belgeNo && <span className="vg-code vg-muted">#{h.belgeNo}</span>}
+                          {gun!==null && !h.odendi && <Badge tone={vadeTon(gun)} size="sm">{vadeMetni(gun)}</Badge>}
+                        </div>
+                      </td>
+                      <td className="is-num is-strong" style={{ textDecoration: h.odendi ? 'line-through' : 'none' }}>
+                        {['alacak','borc'].includes(h.tip)?'+':'−'}{para(h.tutar)}
+                      </td>
+                      <td>
+                        {!h.odendi && (h.tip==='alacak'||h.tip==='borc') && (
+                          <Button size="sm" icon={HandCoins} onClick={()=>setTahsilatModal(h)}>{h.tip==='alacak'?'Tahsil et':'Öde'}</Button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Modal>
 
       {tahsilatModal&&(
-        <TahsilatModal hareket={tahsilatModal} cari={cari} t={t}
+        <TahsilatModal hareket={tahsilatModal} cari={cari}
           onKapat={()=>setTahsilatModal(null)}
           onKaydet={()=>{ setTahsilatModal(null); yukle(); onGuncelle() }}
         />
       )}
       {hareketModal&&(
-        <HareketModal cari={cari} t={t}
+        <HareketModal cari={cari}
           onKapat={()=>setHareketModal(false)}
           onKaydet={()=>{ setHareketModal(false); yukle(); onGuncelle() }}
         />
       )}
-    </div>
+    </>
   )
 }
 
 // ─── ANA COMPONENT ────────────────────────────────────────────
-export default function BorcAlacak({ t }) {
+export default function BorcAlacak() {
   const [cariler, setCariler]       = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [arama, setArama]           = useState('')
@@ -366,102 +302,57 @@ export default function BorcAlacak({ t }) {
 
   const toplamBorc = cariler.filter(c=>Number(c.bakiye)>0).reduce((t,c)=>t+Number(c.bakiye),0)
   const toplamAlacak = cariler.filter(c=>Number(c.bakiye)<0).reduce((t,c)=>t+Math.abs(Number(c.bakiye)),0)
+  const net = toplamAlacak - toplamBorc
 
   return (
-    <div className="vega-page-pad" style={{padding:'22px 28px'}}>
-      <style>{`
-        .vega-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-        .vega-scroll-x table{min-width:640px;}
-        @media (max-width:860px){
-          .vega-page-pad{padding-left:14px!important;padding-right:14px!important;}
-          .vega-grid-2,.vega-grid-3{grid-template-columns:1fr!important;}
-        }
-        @media (max-width:600px){
-          .vega-header-row{flex-direction:column;align-items:stretch!important;gap:12px;}
-        }
-      `}</style>
-      {/* Başlık */}
-      <div className="vega-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-        <div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:t.text}}>Borç / Alacak</div>
-          <div style={{fontSize:13,color:t.textMuted,marginTop:4}}>{cariler.length} cari hesap</div>
-        </div>
-        <button onClick={()=>setCariModal('yeni')} style={{padding:'10px 20px',borderRadius:10,background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:600}}>
-          + Yeni Hesap
-        </button>
+    <Page>
+      <PageHeader title="Borç / alacak" subtitle={`${cariler.length} cari hesap`}
+        actions={<Button variant="primary" icon={Plus} onClick={()=>setCariModal('yeni')}>Cari hesap ekle</Button>} />
+
+      <div className="vg-grid-3">
+        <StatCard label="Toplam alacak" value={para(toplamAlacak)} />
+        <StatCard label="Toplam borç" value={para(toplamBorc)} />
+        <StatCard label="Net bakiye" value={para(Math.abs(net))}
+          meta={<Badge tone={net>=0?'success':'critical'}>{net>=0?'Net alacak':'Net borç'}</Badge>} />
       </div>
 
-      {/* KPI */}
-      <div className="vega-grid-3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:20}}>
-        <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:12,padding:'16px 18px'}}>
-          <div style={{fontSize:11,color:t.textMuted,marginBottom:4}}>TOPLAM ALACAK</div>
-          <div style={{fontSize:22,fontWeight:700,color:'#6fcf97'}}>{para(toplamAlacak)}</div>
+      <div className="vg-table-wrap">
+        <div className="vg-table-toolbar">
+          <SearchInput value={arama} onChange={e=>setArama(e.target.value)} placeholder="Ad veya telefon" aria-label="Cari ara" style={{ flex: 1, minWidth: 200, maxWidth: 360 }} />
+          <Segmented label="Cari tipi" value={tipFiltre} onChange={setTipFiltre}
+            options={[{ value:'hepsi', label:'Tümü' }, { value:'musteri', label:'Müşteriler' }, { value:'tedarikci', label:'Tedarikçiler' }]} />
         </div>
-        <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:12,padding:'16px 18px'}}>
-          <div style={{fontSize:11,color:t.textMuted,marginBottom:4}}>TOPLAM BORÇ</div>
-          <div style={{fontSize:22,fontWeight:700,color:'#eb5757'}}>{para(toplamBorc)}</div>
-        </div>
-        <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:12,padding:'16px 18px'}}>
-          <div style={{fontSize:11,color:t.textMuted,marginBottom:4}}>NET BAKİYE</div>
-          <div style={{fontSize:22,fontWeight:700,color:toplamAlacak-toplamBorc>=0?'#6fcf97':'#eb5757'}}>{para(Math.abs(toplamAlacak-toplamBorc))}</div>
-          <div style={{fontSize:11,color:t.textMuted}}>{toplamAlacak-toplamBorc>=0?'Net Alacak':'Net Borç'}</div>
-        </div>
+        {yukleniyor ? <LoadingRows card={false} /> : filtreli.length===0 ? (
+          <EmptyState icon={ArrowLeftRight} title={arama ? `"${arama}" ile eşleşen hesap yok` : 'Kayıt bulunamadı'} />
+        ) : (
+          <div className="vg-table-scroll">
+            <table className="vg-table" style={{ minWidth: 560 }}>
+              <thead><tr><th>Hesap</th><th>Tip</th><th>Telefon</th><th className="is-num">Bakiye</th><th>Durum</th></tr></thead>
+              <tbody>
+                {filtreli.map(c=>{
+                  const bakiye = Number(c.bakiye)
+                  const durum = bakiye > 0 ? 'borc' : bakiye < 0 ? 'alacak' : 'sifir'
+                  return (
+                    <tr key={c.id} className="is-clickable" onClick={()=>setSecilenCari(c)}>
+                      <td className="is-strong">{c.ad}</td>
+                      <td><Badge dot={false}>{c.tip==='musteri'?'Müşteri':'Tedarikçi'}</Badge></td>
+                      <td className="vg-muted">{c.telefon || '—'}</td>
+                      <td className="is-num is-strong">{para(Math.abs(bakiye))}</td>
+                      <td><Badge tone={durum==='borc'?'critical':durum==='alacak'?'success':'neutral'}>{durum==='borc'?'Borçlu':durum==='alacak'?'Alacaklı':'Dengede'}</Badge></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Filtreler */}
-      <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap'}}>
-        <input value={arama} onChange={e=>setArama(e.target.value)} placeholder="Ad veya telefon ara..."
-          style={{flex:1,minWidth:200,padding:'9px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
-        {[['hepsi','Tümü'],['musteri','Müşteriler'],['tedarikci','Tedarikçiler']].map(([k,l])=>(
-          <button key={k} onClick={()=>setTipFiltre(k)} style={{padding:'9px 16px',borderRadius:10,fontSize:12,
-            background:tipFiltre===k?t.accentBg:t.input,border:`1px solid ${tipFiltre===k?t.accent+'55':t.border}`,
-            color:tipFiltre===k?t.accent:t.textMuted}}>{l}</button>
-        ))}
-      </div>
-
-      {/* Liste */}
-      {yukleniyor ? <div style={{padding:40,textAlign:'center',color:t.textMuted}}>Yükleniyor...</div> : (
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {filtreli.map(c=>{
-            const bakiye = Number(c.bakiye)
-            const durum = bakiye > 0 ? 'borc' : bakiye < 0 ? 'alacak' : 'sifir'
-            return (
-              <div key={c.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-                padding:'14px 18px',background:t.card,border:`1px solid ${t.border}`,borderRadius:12,
-                cursor:'pointer'}}
-                onClick={()=>setSecilenCari(c)}>
-                <div>
-                  <div style={{fontSize:14,fontWeight:600,color:t.text}}>{c.ad}</div>
-                  <div style={{fontSize:12,color:t.textMuted,marginTop:2}}>
-                    <span style={{padding:'1px 8px',borderRadius:20,background:t.hover,fontSize:11}}>{c.tip==='musteri'?'Müşteri':'Tedarikçi'}</span>
-                    {c.telefon&&<span style={{marginLeft:8}}>{c.telefon}</span>}
-                  </div>
-                </div>
-                <div style={{textAlign:'right'}}>
-                  <div style={{fontSize:16,fontWeight:700,color:durum==='borc'?'#eb5757':durum==='alacak'?'#6fcf97':t.textMuted}}>
-                    {para(Math.abs(bakiye))}
-                  </div>
-                  <div style={{fontSize:11,color:durum==='borc'?'#eb5757':durum==='alacak'?'#6fcf97':t.textMuted}}>
-                    {durum==='borc'?'Borçlu':durum==='alacak'?'Alacaklı':'Dengede'}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-          {filtreli.length===0&&<div style={{padding:40,textAlign:'center',color:t.textMuted}}>Kayıt bulunamadı</div>}
-        </div>
-      )}
-
-      {cariModal&&(
-        <CariModal cari={cariModal==='yeni'?null:cariModal} t={t}
-          onKaydet={()=>{ setCariModal(null); yukle() }}
-          onKapat={()=>setCariModal(null)}
-        />
-      )}
       {secilenCari&&(
-        <HesapDokumu cari={secilenCari} t={t}
+        <HesapDokumu cari={secilenCari}
           onKapat={()=>setSecilenCari(null)}
-          onGuncelle={()=>{ 
+          onDuzenle={()=>setCariModal(secilenCari)}
+          onGuncelle={()=>{
             yukle()
             // Güncel bakiyeyi çek
             api.carileriGetir().then(liste => {
@@ -471,6 +362,16 @@ export default function BorcAlacak({ t }) {
           }}
         />
       )}
-    </div>
+      {cariModal&&(
+        <CariModal cari={cariModal==='yeni'?null:cariModal}
+          onKaydet={()=>{
+            const duzenlenen = cariModal !== 'yeni' ? cariModal.id : null
+            setCariModal(null); yukle()
+            if (duzenlenen) api.carileriGetir().then(liste => { const g = liste.find(c => c.id === duzenlenen); if (g) setSecilenCari(s => s ? g : s) }).catch(()=>{})
+          }}
+          onKapat={()=>setCariModal(null)}
+        />
+      )}
+    </Page>
   )
 }

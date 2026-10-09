@@ -1,3 +1,5 @@
+import { Banknote, CreditCard, Landmark, CalendarClock, ReceiptText } from 'lucide-react'
+
 // ─── PAYLAŞILAN YARDIMCILAR ───────────────────────────────────
 
 export const para = v => `₺${Number(v||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}`
@@ -8,11 +10,15 @@ export const tarihFormat = iso => {
     + ' ' + d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})
 }
 
+// ikon: lucide-react bileşeni · ton: rozet rengi (Badge tone)
 export const ODEME_TIPLERI = [
-  { id:'nakit',  label:'Nakit',        ikon:'💵', renk:'#6fcf97' },
-  { id:'kart',   label:'Kredi Kartı',  ikon:'💳', renk:'#56ccf2' },
-  { id:'havale', label:'Havale / EFT', ikon:'🏦', renk:'#bb87fc' },
-  { id:'taksit', label:'Taksit',       ikon:'📅', renk:'#f2c94c' },
+  { id:'nakit',    label:'Nakit',        ikon:Banknote,   ton:'success' },
+  { id:'kart',     label:'Kredi kartı',  ikon:CreditCard, ton:'info' },
+  { id:'havale',   label:'Havale / EFT', ikon:Landmark,   ton:'violet' },
+  { id:'taksit',   label:'Taksit',       ikon:CalendarClock, ton:'warning' },
+  // Veresiye de bir ödeme tipi: satış normal akıştan kaydediliyor (stok düşüyor, fişe
+  // yazılıyor), tutar kasaya girmiyor, müşterinin cari hesabına alacak olarak işleniyor.
+  { id:'veresiye', label:'Veresiye',     ikon:ReceiptText, ton:'critical' },
 ]
 
 export const BANKALAR = [

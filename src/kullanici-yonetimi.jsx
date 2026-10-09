@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import * as api from './api'
+import { Page, PageHeader, Card, Button, Field, Input, Select, Switch, Segmented, Badge, Banner, Modal, Progress, EmptyState, LoadingRows, toast } from './ui'
+import { Plus, Pencil, Target, Pause, Play, Store, Clock, Users } from 'lucide-react'
 
 const ROLLER = [
-  { id: 'admin',   label: 'Admin',            renk: '#c9b882', aciklama: 'Tüm modüllere tam erişim' },
-  { id: 'satis',   label: 'Satış Yetkilisi',  renk: '#6fcf97', aciklama: 'Satış, müşteri, stok görüntüleme' },
-  { id: 'kasiyer', label: 'Kasiyer',          renk: '#56ccf2', aciklama: 'Sadece kasa/satış ekranı' },
-  { id: 'depo',    label: 'Depo Sorumlusu',   renk: '#bb87fc', aciklama: 'Stok görüntüleme ve düzenleme' },
+  { id: 'admin',   label: 'Admin',            ton: 'info',    aciklama: 'Tüm modüllere tam erişim' },
+  { id: 'satis',   label: 'Satış Yetkilisi',  ton: 'success', aciklama: 'Satış, müşteri, stok görüntüleme' },
+  { id: 'kasiyer', label: 'Kasiyer',          ton: 'warning', aciklama: 'Sadece kasa/satış ekranı' },
+  { id: 'depo',    label: 'Depo Sorumlusu',   ton: 'violet',  aciklama: 'Stok görüntüleme ve düzenleme' },
 ]
 
 function tarihTR(iso) {
@@ -14,7 +16,7 @@ function tarihTR(iso) {
 }
 
 // ─── YENİ KULLANICI MODAL ─────────────────────────────────────
-function KullaniciModal({ kullanici, magazalar, onKaydet, onKapat, t }) {
+function KullaniciModal({ kullanici, magazalar, onKaydet, onKapat }) {
   const bos = { ad: '', soyad: '', email: '', sifre: '', rol: 'satis', magazaId: '', aktif: true }
   const [form, setForm] = useState(kullanici ? {
     ...kullanici, sifre: '', soyad: kullanici.soyad || ''
@@ -25,9 +27,9 @@ function KullaniciModal({ kullanici, magazalar, onKaydet, onKapat, t }) {
   const g = (k, v) => setForm(p => ({ ...p, [k]: v }))
 
   const kaydet = async () => {
-    if (!form.ad.trim())            return setHata('Ad zorunlu')
-    if (!form.email.includes('@'))  return setHata('Geçerli e-posta giriniz')
-    if (!kullanici && form.sifre.length < 6) return setHata('Şifre en az 6 karakter olmalı')
+    if (!form.ad.trim())            return setHata('Ad zorunlu.')
+    if (!form.email.includes('@'))  return setHata('Geçerli bir e-posta adresi girin.')
+    if (!kullanici && form.sifre.length < 6) return setHata('Şifre en az 6 karakter olmalı.')
     setHata(''); setKayit(true)
     try {
       const veri = { ...form }
@@ -38,6 +40,7 @@ function KullaniciModal({ kullanici, magazalar, onKaydet, onKapat, t }) {
       } else {
         await api.kullaniciEkle(veri)
       }
+      toast.success(kullanici ? 'Kullanıcı güncellendi.' : 'Kullanıcı eklendi.')
       onKaydet()
     } catch (e) {
       setHata(e.message)
@@ -47,76 +50,41 @@ function KullaniciModal({ kullanici, magazalar, onKaydet, onKapat, t }) {
   }
 
   const inp = (label, key, type = 'text', placeholder = '') => (
-    <div>
-      <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: .5 }}>{label}</div>
-      <input type={type} value={form[key]} onChange={e => g(key, e.target.value)} placeholder={placeholder}
-        style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: t.input, border: `1px solid ${t.border}`, color: t.text, fontSize: 13, outline: 'none' }} />
-    </div>
+    <Field label={label} htmlFor={`k-${key}`}>
+      <Input id={`k-${key}`} type={type} value={form[key]} onChange={e => g(key, e.target.value)} placeholder={placeholder} autoComplete={type === 'password' ? 'new-password' : undefined} />
+    </Field>
   )
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ background: t.sidebar || '#14120f', border: `1px solid ${t.border}`, borderRadius: 18, padding: '28px 32px', width: '100%', maxWidth: 480, boxShadow: '0 24px 60px rgba(0,0,0,.5)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, color: t.text }}>{kullanici ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı Ekle'}</div>
-          <button onClick={onKapat} style={{ color: t.textMuted, fontSize: 20 }}>✕</button>
-        </div>
+    <Modal title={kullanici ? 'Kullanıcıyı düzenle' : 'Yeni kullanıcı'} onClose={onKapat}
+      footer={<>
+        <Button variant="plain" onClick={onKapat}>Vazgeç</Button>
+        <Button variant="primary" onClick={kaydet} loading={kayit}>{kayit ? 'Kaydediliyor…' : kullanici ? 'Değişiklikleri kaydet' : 'Kullanıcı ekle'}</Button>
+      </>}>
+      <div className="vg-grid-2">{inp('Ad', 'ad')}{inp('Soyad', 'soyad')}</div>
+      {inp('E-posta', 'email', 'email')}
+      {inp('Şifre', 'sifre', 'password', kullanici ? 'Değiştirmek için doldurun' : 'En az 6 karakter')}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {inp('Ad', 'ad')}
-            {inp('Soyad', 'soyad')}
-          </div>
-          {inp('E-posta', 'email', 'email')}
-          {inp('Şifre', 'sifre', 'password', kullanici ? 'Değiştirmek için doldurun' : 'En az 6 karakter')}
+      <Field label="Rol" help={ROLLER.find(r => r.id === form.rol)?.aciklama}>
+        <Segmented label="Rol" value={form.rol} onChange={v => g('rol', v)} options={ROLLER.map(r => ({ value: r.id, label: r.label }))} className="vg-segmented--block" />
+      </Field>
 
-          {/* Rol */}
-          <div>
-            <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: .5 }}>Rol</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {ROLLER.map(r => (
-                <button key={r.id} onClick={() => g('rol', r.id)} style={{ flex: 1, minWidth: 100, padding: '8px 0', borderRadius: 8, fontSize: 12, background: form.rol === r.id ? `${r.renk}22` : t.input, border: `1px solid ${form.rol === r.id ? r.renk + '55' : t.border}`, color: form.rol === r.id ? r.renk : t.textMuted, fontWeight: form.rol === r.id ? 600 : 400 }}>
-                  {r.label}
-                </button>
-              ))}
-            </div>
-            <div style={{ fontSize: 11, color: t.textMuted, marginTop: 6 }}>{ROLLER.find(r => r.id === form.rol)?.aciklama}</div>
-          </div>
+      <Field label="Mağaza" htmlFor="k-magaza">
+        <Select id="k-magaza" value={form.magazaId || ''} onChange={e => g('magazaId', e.target.value)}>
+          <option value="">Tüm mağazalar</option>
+          {magazalar.filter(m => m.tip !== 'online').map(m => <option key={m.id} value={m.id}>{m.ad}</option>)}
+        </Select>
+      </Field>
 
-          {/* Mağaza */}
-          <div>
-            <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: .5 }}>Mağaza</div>
-            <select value={form.magazaId || ''} onChange={e => g('magazaId', e.target.value)}
-              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: t.input, border: `1px solid ${t.border}`, color: t.text, fontSize: 13, outline: 'none' }}>
-              <option value="">Tüm Mağazalar</option>
-              {magazalar.filter(m => m.tip !== 'online').map(m => <option key={m.id} value={m.id}>{m.ad}</option>)}
-            </select>
-          </div>
+      <Switch checked={!!form.aktif} onChange={() => g('aktif', !form.aktif)} label={form.aktif ? 'Hesap aktif' : 'Hesap pasif'} />
 
-          {/* Aktif */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div onClick={() => g('aktif', !form.aktif)} style={{ width: 40, height: 22, borderRadius: 11, background: form.aktif ? t.accent : t.input, border: `1px solid ${t.border}`, cursor: 'pointer', position: 'relative', transition: 'background .2s' }}>
-              <div style={{ position: 'absolute', top: 2, left: form.aktif ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .2s' }} />
-            </div>
-            <span style={{ fontSize: 13, color: t.text }}>Hesap {form.aktif ? 'Aktif' : 'Pasif'}</span>
-          </div>
-        </div>
-
-        {hata && <div style={{ marginTop: 14, padding: '8px 14px', background: 'rgba(235,87,87,0.1)', border: '1px solid rgba(235,87,87,0.3)', borderRadius: 8, fontSize: 12, color: '#eb5757' }}>{hata}</div>}
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-          <button onClick={onKapat} style={{ flex: 1, padding: '11px 0', borderRadius: 10, background: t.input, border: `1px solid ${t.border}`, color: t.textMuted, fontSize: 13 }}>İptal</button>
-          <button onClick={kaydet} disabled={kayit} style={{ flex: 2, padding: '11px 0', borderRadius: 10, background: t.accentBg, border: `1px solid ${t.accent}55`, color: t.accent, fontSize: 13, fontWeight: 600 }}>
-            {kayit ? 'Kaydediliyor...' : kullanici ? 'Güncelle' : 'Kullanıcı Ekle'}
-          </button>
-        </div>
-      </div>
-    </div>
+      {hata && <Banner tone="critical">{hata}</Banner>}
+    </Modal>
   )
 }
 
 // ─── HEDEF MODAL ─────────────────────────────────────────────
-function HedefModal({ kullanici, onKaydet, onKapat, t }) {
+function HedefModal({ kullanici, onKaydet, onKapat }) {
   const simdi = new Date()
   const buAy = simdi.toISOString().slice(0,7)
   const [hedef, setHedef]     = useState(Number(kullanici.aylikHedef||0))
@@ -140,57 +108,46 @@ function HedefModal({ kullanici, onKaydet, onKapat, t }) {
       })
       // aylikHedef alanını da güncelle (bu ayki hedef için)
       await api.kullaniciGuncelle(kullanici.id, { aylikHedef: Number(hedef) })
+      toast.success('Hedef kaydedildi.')
       onKaydet()
-    } catch(e) { alert(e.message) }
+    } catch(e) { toast.error(e.message) }
     finally { setKayit(false) }
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:1001,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:'28px 32px',width:'100%',maxWidth:380}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text}}>Hedef Tanımla — {kullanici.ad}</div>
-          <button onClick={onKapat} style={{color:t.textMuted,fontSize:20}}>✕</button>
-        </div>
-        <div style={{display:'flex',flexDirection:'column',gap:14}}>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Ay</div>
-            <input type="month" value={ay} onChange={e=>setAy(e.target.value)}
-              style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
+    <Modal title="Satış hedefi" subtitle={`${kullanici.ad} ${kullanici.soyad || ''}`} onClose={onKapat}
+      footer={<>
+        <Button variant="plain" onClick={onKapat}>Vazgeç</Button>
+        <Button variant="primary" onClick={kaydet} loading={kayit}>{kayit ? 'Kaydediliyor…' : 'Hedefi kaydet'}</Button>
+      </>}>
+      <div className="vg-grid-2">
+        <Field label="Ay" htmlFor="h-ay">
+          <Input id="h-ay" type="month" value={ay} onChange={e=>setAy(e.target.value)} />
+        </Field>
+        <Field label="Aylık satış hedefi" htmlFor="h-hedef">
+          <div className="vg-input-group">
+            <Input id="h-hedef" type="number" className="vg-num" value={hedef} onChange={e=>setHedef(e.target.value)} style={{ paddingRight: 28 }} />
+            <span className="vg-input-suffix">₺</span>
           </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Aylık Satış Hedefi (₺)</div>
-            <div style={{position:'relative'}}>
-              <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:t.textMuted}}>₺</span>
-              <input type="number" value={hedef} onChange={e=>setHedef(e.target.value)}
-                style={{width:'100%',padding:'10px 14px 10px 28px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.accent,fontSize:16,fontWeight:700,outline:'none'}}/>
-            </div>
-          </div>
-          {gecmisler.length>0&&(
-            <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:10,overflow:'hidden'}}>
-              <div style={{fontSize:11,color:t.textMuted,padding:'8px 12px',borderBottom:`1px solid ${t.border}`,textTransform:'uppercase',letterSpacing:.5}}>Geçmiş Hedefler</div>
-              {gecmisler.slice(0,6).map(h=>(
-                <div key={h.id} style={{display:'flex',justifyContent:'space-between',padding:'7px 12px',borderBottom:`1px solid ${t.border}`,fontSize:12}}>
-                  <span style={{color:t.textMuted}}>{h.yil}/{String(h.ay).padStart(2,'0')}</span>
-                  <span style={{color:t.accent,fontWeight:600}}>₺{Number(h.hedef).toLocaleString('tr-TR')}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={{display:'flex',gap:10,marginTop:20}}>
-          <button onClick={onKapat} style={{flex:1,padding:'10px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-          <button onClick={kaydet} disabled={kayit} style={{flex:2,padding:'10px 0',borderRadius:10,background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:600}}>
-            {kayit?'Kaydediliyor...':'✓ Hedef Kaydet'}
-          </button>
-        </div>
+        </Field>
       </div>
-    </div>
+      {gecmisler.length>0&&(
+        <div>
+          <div className="vg-section-label" style={{ marginBottom: 4 }}>Geçmiş hedefler</div>
+          {gecmisler.slice(0,6).map(h=>(
+            <div key={h.id} className="vg-kv" style={{ borderTop: '1px solid var(--line)' }}>
+              <span>{String(h.ay).padStart(2,'0')}.{h.yil}</span>
+              <span>₺{Number(h.hedef).toLocaleString('tr-TR')}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
   )
 }
 
 // ─── ANA COMPONENT ────────────────────────────────────────────
-export default function KullaniciYonetimi({ t }) {
+export default function KullaniciYonetimi() {
   const [kullanicilar, setKullanicilar] = useState([])
   const [magazalar, setMagazalar]       = useState([])
   const [yukleniyor, setYukleniyor]     = useState(true)
@@ -224,83 +181,71 @@ export default function KullaniciYonetimi({ t }) {
   useEffect(() => { yukle() }, [])
 
   const durumToggle = async (k) => {
-    await api.kullaniciGuncelle(k.id, { aktif: !k.aktif })
+    try {
+      await api.kullaniciGuncelle(k.id, { aktif: !k.aktif })
+      toast.success(k.aktif ? `${k.ad} pasif yapıldı.` : `${k.ad} aktif yapıldı.`)
+    } catch (e) { toast.error(e.message) }
     yukle()
   }
 
-  if (yukleniyor) return <div style={{ padding: 40, color: t.textMuted }}>Yükleniyor...</div>
-
   return (
-    <div style={{ padding: '22px 28px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, color: t.text }}>Kullanıcı Yönetimi</div>
-          <div style={{ fontSize: 13, color: t.textMuted, marginTop: 4 }}>{kullanicilar.length} kullanıcı</div>
-        </div>
-        <button onClick={() => setModal('yeni')} style={{ padding: '10px 20px', borderRadius: 10, background: t.accentBg, border: `1px solid ${t.accent}55`, color: t.accent, fontSize: 13, fontWeight: 600 }}>
-          + Yeni Kullanıcı
-        </button>
-      </div>
+    <Page>
+      <PageHeader title="Kullanıcılar" subtitle={yukleniyor ? ' ' : `${kullanicilar.length} kullanıcı · ${kullanicilar.filter(k => k.aktif).length} aktif`}
+        actions={<Button variant="primary" icon={Plus} onClick={() => setModal('yeni')}>Kullanıcı ekle</Button>} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))', gap: 14 }}>
-        {kullanicilar.map(k => {
-          const rol = ROLLER.find(r => r.id === k.rol)
-          return (
-            <div key={k.id} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: 20, opacity: k.aktif ? 1 : .6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: t.text }}>{k.ad} {k.soyad || ''}</div>
-                  <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>{k.email}</div>
-                </div>
-                <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: `${rol?.renk || t.accent}18`, color: rol?.renk || t.accent, fontWeight: 600 }}>
-                  {rol?.label || k.rol}
-                </span>
-              </div>
-              <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 4 }}>
-                🏪 {k.magaza?.ad || 'Tüm Mağazalar'}
-              </div>
-              <div style={{ fontSize: 11, color: t.textMuted, marginBottom: k.aylikHedef ? 10 : 14 }}>
-                Son giriş: {tarihTR(k.sonGiris)}
-              </div>
-              {/* Hedef & Performans */}
-              {k.aylikHedef > 0 && (() => {
-                const gercek = performans[k.id] || 0
-                const yuzde  = Math.min(100, Math.round((gercek / Number(k.aylikHedef)) * 100))
-                return (
-                  <div style={{marginBottom:14}}>
-                    <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:4}}>
-                      <span style={{color:t.textMuted}}>Bu ay: ₺{gercek.toLocaleString('tr-TR',{minimumFractionDigits:0})}</span>
-                      <span style={{color:yuzde>=100?'#6fcf97':yuzde>=60?t.accent:'#eb5757',fontWeight:600}}>{yuzde}%</span>
-                    </div>
-                    <div style={{height:6,background:t.input,borderRadius:3,overflow:'hidden'}}>
-                      <div style={{height:'100%',width:`${yuzde}%`,background:yuzde>=100?'#6fcf97':yuzde>=60?t.accent:'#eb5757',borderRadius:3,transition:'width .5s'}}/>
-                    </div>
-                    <div style={{fontSize:10,color:t.textMuted,marginTop:3}}>Hedef: ₺{Number(k.aylikHedef).toLocaleString('tr-TR')}</div>
+      {yukleniyor ? <LoadingRows /> : kullanicilar.length === 0 ? (
+        <div className="vg-card"><EmptyState icon={Users} title="Henüz kullanıcı yok" actions={<Button variant="primary" icon={Plus} onClick={() => setModal('yeni')}>Kullanıcı ekle</Button>} /></div>
+      ) : (
+        <div className="vg-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+          {kullanicilar.map(k => {
+            const rol = ROLLER.find(r => r.id === k.rol)
+            const basHarf = `${k.ad?.[0] || ''}${k.soyad?.[0] || ''}`.toLocaleUpperCase('tr-TR')
+            const gercek = performans[k.id] || 0
+            const yuzde = k.aylikHedef > 0 ? (gercek / Number(k.aylikHedef)) * 100 : 0
+            return (
+              <Card key={k.id} style={{ opacity: k.aktif ? 1 : 0.65 }} bodyClassName="vg-stack" >
+                <div className="vg-row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+                  <span className="vg-avatar" style={{ width: 36, height: 36, fontSize: 13 }}>{basHarf}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600 }} className="vg-truncate">{k.ad} {k.soyad || ''}</div>
+                    <div className="vg-list__secondary vg-truncate">{k.email}</div>
                   </div>
-                )
-              })()}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setModal(k)} style={{ flex: 1, padding: '7px 0', borderRadius: 8, background: t.input, border: `1px solid ${t.border}`, color: t.textMuted, fontSize: 12 }}>✏ Düzenle</button>
-                <button onClick={() => setHedefModal(k)} style={{ flex: 1, padding: '7px 0', borderRadius: 8, background: 'rgba(201,184,130,.08)', border: `1px solid rgba(201,184,130,.3)`, color: t.accent, fontSize: 12 }}>🎯 Hedef</button>
-                <button onClick={() => durumToggle(k)} style={{ flex: 1, padding: '7px 0', borderRadius: 8, background: k.aktif ? 'rgba(235,87,87,0.08)' : 'rgba(111,207,151,0.08)', border: `1px solid ${k.aktif ? 'rgba(235,87,87,0.3)' : 'rgba(111,207,151,0.3)'}`, color: k.aktif ? '#eb5757' : '#6fcf97', fontSize: 12 }}>
-                  {k.aktif ? '⏸' : '▶'}
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+                  <Badge tone={rol?.ton} dot={false}>{rol?.label || k.rol}</Badge>
+                </div>
 
-      {hedefModal && <HedefModal kullanici={hedefModal} t={t} onKaydet={()=>{setHedefModal(null);yukle()}} onKapat={()=>setHedefModal(null)}/>}
+                <div className="vg-stack" style={{ gap: 4, fontSize: 12, color: 'var(--ink-muted)' }}>
+                  <span className="vg-row" style={{ gap: 6 }}><Store className="vg-icon" style={{ width: 14, height: 14 }} />{k.magaza?.ad || 'Tüm mağazalar'}</span>
+                  <span className="vg-row" style={{ gap: 6 }}><Clock className="vg-icon" style={{ width: 14, height: 14 }} />Son giriş: {tarihTR(k.sonGiris)}</span>
+                  {!k.aktif && <span><Badge tone="neutral" size="sm">Pasif</Badge></span>}
+                </div>
+
+                {k.aylikHedef > 0 && (
+                  <Progress name="Bu ay" figures={`₺${gercek.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} / ₺${Number(k.aylikHedef).toLocaleString('tr-TR')}`}
+                    pct={yuzde} state={yuzde >= 100 ? 'done' : undefined} />
+                )}
+
+                <div className="vg-row" style={{ flexWrap: 'nowrap' }}>
+                  <Button size="sm" icon={Pencil} onClick={() => setModal(k)} style={{ flex: 1 }}>Düzenle</Button>
+                  <Button size="sm" icon={Target} onClick={() => setHedefModal(k)} style={{ flex: 1 }}>Hedef</Button>
+                  <Button size="sm" variant={k.aktif ? 'critical-plain' : 'secondary'} icon={k.aktif ? Pause : Play} onClick={() => durumToggle(k)} style={{ flex: 1 }}>
+                    {k.aktif ? 'Pasif yap' : 'Aktif yap'}
+                  </Button>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      {hedefModal && <HedefModal kullanici={hedefModal} onKaydet={()=>{setHedefModal(null);yukle()}} onKapat={()=>setHedefModal(null)}/>}
       {modal && (
         <KullaniciModal
           kullanici={modal === 'yeni' ? null : modal}
           magazalar={magazalar}
-          t={t}
           onKaydet={() => { setModal(null); yukle() }}
           onKapat={() => setModal(null)}
         />
       )}
-    </div>
+    </Page>
   )
 }

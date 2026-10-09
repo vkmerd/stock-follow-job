@@ -1,24 +1,26 @@
 import { useState, useEffect } from 'react'
 import { iadelerGetir, iadeOnayla, iadeReddet } from './api'
+import { Page, PageHeader, Card, Button, IconButton, Tabs, Badge, Banner, Tile, EmptyState, LoadingRows, onayla as onayIste, toast } from './ui'
+import { RefreshCw, Check, X, Undo2, StickyNote } from 'lucide-react'
 
 const para = v => `₺${Number(v||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}`
 const tarih = iso => new Date(iso).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
 
 const DURUMLAR = [
-  { id:'hepsi',      label:'Tümü',         renk:'#888' },
-  { id:'beklemede',  label:'Beklemede',     renk:'#f2c94c' },
-  { id:'onaylandi',  label:'Onaylandı',     renk:'#6fcf97' },
-  { id:'reddedildi', label:'Reddedildi',    renk:'#eb5757' },
+  { id:'hepsi',      label:'Tümü',         ton:'neutral' },
+  { id:'beklemede',  label:'Beklemede',     ton:'warning' },
+  { id:'onaylandi',  label:'Onaylandı',     ton:'success' },
+  { id:'reddedildi', label:'Reddedildi',    ton:'critical' },
 ]
 
 const NEDENLER = {
-  musteri_istegi: 'Müşteri İsteği',
-  urun_hatali:    'Ürün Hatalı/Bozuk',
-  beden_uyumsuz:  'Beden/Numara Uyumsuz',
+  musteri_istegi: 'Müşteri isteği',
+  urun_hatali:    'Ürün hatalı/bozuk',
+  beden_uyumsuz:  'Beden/numara uyumsuz',
   diger:          'Diğer',
 }
 
-export default function IadeYonetimi({ t, rol }) {
+export default function IadeYonetimi({ rol }) {
   const [iadeler, setIadeler]       = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [durum, setDurum]           = useState('beklemede')
@@ -36,229 +38,133 @@ export default function IadeYonetimi({ t, rol }) {
   useEffect(() => { yukle() }, [durum])
 
   const onayla = async (id) => {
-    if (!window.confirm('Bu iadeyi onaylamak istediğinize emin misiniz? Stok geri eklenecek.')) return
+    if (!await onayIste('İade onaylandığında ürünler stoğa geri eklenir.', { title: 'İadeyi onayla', confirmLabel: 'İadeyi onayla', tone: 'primary' })) return
     setIslem('onaylaniyor')
     try {
       await iadeOnayla(id)
+      toast.success('İade onaylandı, stok güncellendi.')
       yukle()
       setSecilen(null)
-    } catch(e) { alert('Hata: ' + e.message) }
+    } catch(e) { toast.error('İade onaylanamadı: ' + e.message) }
     finally { setIslem(null) }
   }
 
   const reddet = async (id) => {
-    if (!window.confirm('Bu iadeyi reddetmek istediğinize emin misiniz?')) return
+    if (!await onayIste('İade reddedilecek; stok değişmez.', { title: 'İadeyi reddet', confirmLabel: 'İadeyi reddet', tone: 'critical' })) return
     setIslem('reddediliyor')
     try {
       await iadeReddet(id)
+      toast.success('İade reddedildi.')
       yukle()
       setSecilen(null)
-    } catch(e) { alert('Hata: ' + e.message) }
+    } catch(e) { toast.error('İade reddedilemedi: ' + e.message) }
     finally { setIslem(null) }
   }
 
   const bekleyenSayi = iadeler.filter(i => i.durum === 'beklemede').length
 
   return (
-    <div className="vega-page-pad" style={{padding:'22px 28px', fontFamily:"'DM Sans',sans-serif"}}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
-        .vega-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-        .vega-scroll-x table{min-width:640px;}
-        @media (max-width:860px){
-          .vega-page-pad{padding-left:14px!important;padding-right:14px!important;}
-          .vega-grid-2,.vega-detail-grid{grid-template-columns:1fr!important;}
-        }
-        @media (max-width:600px){
-          .vega-header-row{flex-direction:column;align-items:stretch!important;}
-        }
-      `}</style>
+    <Page>
+      <PageHeader title="İadeler"
+        subtitle={bekleyenSayi > 0 ? `${bekleyenSayi} iade onay bekliyor` : 'Bekleyen iade yok'}
+        actions={<Button icon={RefreshCw} onClick={yukle}>Yenile</Button>}>
+        <Tabs value={durum} onChange={setDurum}
+          items={DURUMLAR.map(d => ({ id: d.id, label: d.label, count: d.id === 'beklemede' ? bekleyenSayi : 0 }))} />
+      </PageHeader>
 
-      {/* Başlık */}
-      <div className="vega-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:22,flexWrap:'wrap',gap:12}}>
-        <div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:t.text}}>İade Yönetimi</div>
-          <div style={{fontSize:13,color:t.textMuted,marginTop:4}}>
-            {bekleyenSayi > 0
-              ? <span style={{color:'#f2c94c'}}>⚠ {bekleyenSayi} bekleyen iade var</span>
-              : 'Bekleyen iade yok'}
-          </div>
-        </div>
-        <button onClick={yukle} style={{padding:'8px 18px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>
-          ↺ Yenile
-        </button>
-      </div>
-
-      {/* Durum filtreleri */}
-      <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
-        {DURUMLAR.map(d => (
-          <button key={d.id} onClick={() => setDurum(d.id)} style={{
-            padding:'8px 18px', borderRadius:20, fontSize:12,
-            background: durum===d.id ? `${d.renk}18` : t.input,
-            border: `1px solid ${durum===d.id ? d.renk+'55' : t.border}`,
-            color: durum===d.id ? d.renk : t.textMuted,
-            fontWeight: durum===d.id ? 600 : 400
-          }}>
-            {d.label}
-            {d.id === 'beklemede' && bekleyenSayi > 0 && (
-              <span style={{marginLeft:6,background:'#f2c94c',color:'#111',borderRadius:10,padding:'1px 7px',fontSize:11,fontWeight:700}}>
-                {bekleyenSayi}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* İçerik */}
-      {yukleniyor ? (
-        <div style={{padding:60,textAlign:'center',color:t.textMuted}}>⏳ Yükleniyor...</div>
-      ) : iadeler.length === 0 ? (
-        <div style={{padding:60,textAlign:'center',color:t.textMuted,background:t.card,border:`1px solid ${t.border}`,borderRadius:14}}>
-          Bu durumda iade yok
-        </div>
+      {yukleniyor ? <LoadingRows /> : iadeler.length === 0 ? (
+        <div className="vg-card"><EmptyState icon={Undo2} title="Bu durumda iade yok" /></div>
       ) : (
-        <div className="vega-detail-grid" style={{display:'grid',gridTemplateColumns:secilen?'1fr 400px':'1fr',gap:16,alignItems:'start'}}>
-
+        <div className={secilen ? 'vg-master-detail' : undefined}>
           {/* Liste */}
-          <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,overflow:'hidden'}}>
-            <div className="vega-scroll-x">
-            <table style={{width:'100%',borderCollapse:'collapse'}}>
-              <thead>
-                <tr style={{borderBottom:`1px solid ${t.border}`,background:t.hover}}>
-                  {['İade No','Tarih','Fiş No','Mağaza','Neden','Tutar','Durum','İşlem'].map(h=>(
-                    <th key={h} style={{padding:'11px 14px',fontSize:10,color:t.textMuted,fontWeight:500,textAlign:'left',letterSpacing:.3}}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {iadeler.map(iade => {
-                  const durumObj = DURUMLAR.find(d => d.id === iade.durum) || DURUMLAR[0]
-                  const secilenMi = secilen?.id === iade.id
-                  return (
-                    <tr key={iade.id} onClick={() => setSecilen(secilenMi ? null : iade)}
-                      style={{borderBottom:`1px solid ${t.border}`,cursor:'pointer',
-                        background: secilenMi ? t.accentBg : 'transparent'}}>
-                      <td style={{padding:'11px 14px',fontSize:12,color:t.accent,fontFamily:'monospace',fontWeight:600}}>{iade.iadeNo}</td>
-                      <td style={{padding:'11px 14px',fontSize:11,color:t.textMuted,whiteSpace:'nowrap'}}>{tarih(iade.tarih)}</td>
-                      <td style={{padding:'11px 14px',fontSize:12,color:t.text,fontFamily:'monospace'}}>{iade.satis?.fisNo||'—'}</td>
-                      <td style={{padding:'11px 14px',fontSize:12,color:t.text}}>{iade.satis?.magaza?.ad||'—'}</td>
-                      <td style={{padding:'11px 14px',fontSize:12,color:t.textMuted}}>{NEDENLER[iade.neden]||iade.neden||'—'}</td>
-                      <td style={{padding:'11px 14px',fontSize:13,fontWeight:600,color:t.accent}}>{para(iade.toplamIade)}</td>
-                      <td style={{padding:'11px 14px'}}>
-                        <span style={{fontSize:11,padding:'3px 10px',borderRadius:20,
-                          background:`${durumObj.renk}18`,color:durumObj.renk,fontWeight:600}}>
-                          {durumObj.label}
-                        </span>
-                      </td>
-                      <td style={{padding:'11px 14px'}}>
-                        {iade.durum === 'beklemede' && rol === 'admin' && (
-                          <div style={{display:'flex',gap:6}} onClick={e=>e.stopPropagation()}>
-                            <button onClick={()=>onayla(iade.id)} disabled={!!islem} style={{
-                              padding:'5px 12px',borderRadius:8,fontSize:11,fontWeight:600,
-                              background:'rgba(111,207,151,.12)',border:'1px solid rgba(111,207,151,.35)',
-                              color:'#6fcf97'}}>
-                              {islem==='onaylaniyor'?'...':'✓ Onayla'}
-                            </button>
-                            <button onClick={()=>reddet(iade.id)} disabled={!!islem} style={{
-                              padding:'5px 12px',borderRadius:8,fontSize:11,
-                              background:'rgba(235,87,87,.08)',border:'1px solid rgba(235,87,87,.2)',
-                              color:'#eb5757'}}>
-                              {islem==='reddediliyor'?'...':'✕ Reddet'}
-                            </button>
-                          </div>
-                        )}
-                        {iade.durum !== 'beklemede' && (
-                          <span style={{fontSize:11,color:t.textMuted}}>—</span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="vg-table-wrap">
+            <div className="vg-table-scroll">
+              <table className="vg-table" style={{ minWidth: 760 }}>
+                <thead><tr>
+                  <th>İade no</th><th>Tarih</th><th>Fiş no</th><th>Mağaza</th><th>Neden</th><th className="is-num">Tutar</th><th>Durum</th><th></th>
+                </tr></thead>
+                <tbody>
+                  {iadeler.map(iade => {
+                    const durumObj = DURUMLAR.find(d => d.id === iade.durum) || DURUMLAR[0]
+                    const secilenMi = secilen?.id === iade.id
+                    return (
+                      <tr key={iade.id} className="is-clickable" aria-selected={secilenMi} onClick={() => setSecilen(secilenMi ? null : iade)}>
+                        <td className="vg-code is-strong">{iade.iadeNo}</td>
+                        <td className="vg-nowrap vg-muted">{tarih(iade.tarih)}</td>
+                        <td className="vg-code">{iade.satis?.fisNo||'—'}</td>
+                        <td>{iade.satis?.magaza?.ad||'—'}</td>
+                        <td className="vg-muted">{NEDENLER[iade.neden]||iade.neden||'—'}</td>
+                        <td className="is-num is-strong">{para(iade.toplamIade)}</td>
+                        <td><Badge tone={durumObj.ton}>{durumObj.label}</Badge></td>
+                        <td onClick={e=>e.stopPropagation()}>
+                          {iade.durum === 'beklemede' && rol === 'admin' && (
+                            <div className="vg-row" style={{ flexWrap: 'nowrap', gap: 4 }}>
+                              <Button size="sm" icon={Check} onClick={()=>onayla(iade.id)} disabled={!!islem} loading={islem==='onaylaniyor'}>Onayla</Button>
+                              <IconButton size="sm" icon={X} label="Reddet" variant="critical-plain" onClick={()=>reddet(iade.id)} disabled={!!islem} />
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
 
           {/* Detay paneli */}
           {secilen && (
-            <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20,position:'sticky',top:20}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-                <div style={{fontFamily:"'Playfair Display',serif",fontSize:17,color:t.text}}>{secilen.iadeNo}</div>
-                <button onClick={()=>setSecilen(null)} style={{color:t.textMuted,fontSize:18}}>✕</button>
+            <Card title={<span className="vg-code" style={{ fontSize: 14 }}>{secilen.iadeNo}</span>}
+              subtitle={<Badge tone={(DURUMLAR.find(d => d.id === secilen.durum) || DURUMLAR[0]).ton}>{(DURUMLAR.find(d => d.id === secilen.durum) || DURUMLAR[0]).label}</Badge>}
+              action={<IconButton icon={X} label="Detayı kapat" size="sm" onClick={()=>setSecilen(null)} />}
+              className="vg-sticky" bodyClassName="vg-stack">
+              <div className="vg-grid-2" style={{ gap: 8 }}>
+                <Tile label="Tarih" value={tarih(secilen.tarih)} style={{ fontSize: 13 }} />
+                <Tile label="Fiş no" value={<span className="vg-code">{secilen.satis?.fisNo||'—'}</span>} />
+                <Tile label="Mağaza" value={secilen.satis?.magaza?.ad||'—'} />
+                <Tile label="Neden" value={NEDENLER[secilen.neden]||secilen.neden||'—'} />
               </div>
 
-              {/* Özet */}
-              <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16}}>
-                {[
-                  {l:'Tarih', v:tarih(secilen.tarih)},
-                  {l:'Fiş No', v:secilen.satis?.fisNo||'—'},
-                  {l:'Mağaza', v:secilen.satis?.magaza?.ad||'—'},
-                  {l:'Neden', v:NEDENLER[secilen.neden]||secilen.neden||'—'},
-                ].map(x=>(
-                  <div key={x.l} style={{padding:'8px 12px',background:t.hover,borderRadius:8}}>
-                    <div style={{fontSize:10,color:t.textMuted,marginBottom:3,textTransform:'uppercase',letterSpacing:.4}}>{x.l}</div>
-                    <div style={{fontSize:12,color:t.text}}>{x.v}</div>
-                  </div>
-                ))}
+              {secilen.notlar && <Banner tone="warning" icon={StickyNote}>{secilen.notlar}</Banner>}
+
+              <div>
+                <div className="vg-section-label" style={{ marginBottom: 4 }}>İade edilen ürünler</div>
+                <ul className="vg-list">
+                  {(secilen.kalemler||[]).map((k,i)=>(
+                    <li key={i} className="vg-list__item" style={{ padding: '8px 0' }}>
+                      <div className="vg-list__main">
+                        <div className="vg-list__primary">{k.urunAd}</div>
+                        <div className="vg-list__secondary">{k.renk}{k.beden?` / ${k.beden}`:''} · {k.adet} adet</div>
+                      </div>
+                      <div className="vg-list__value">{para(k.toplam)}</div>
+                    </li>
+                  ))}
+                </ul>
+                <div className="vg-kv vg-kv--total"><span>Toplam iade</span><span>{para(secilen.toplamIade)}</span></div>
               </div>
 
-              {/* Not */}
-              {secilen.notlar && (
-                <div style={{padding:'8px 12px',background:'rgba(242,201,76,.05)',border:'1px solid rgba(242,201,76,.15)',borderRadius:8,fontSize:12,color:'#f2c94c',marginBottom:16}}>
-                  📝 {secilen.notlar}
-                </div>
-              )}
-
-              {/* Ürünler */}
-              <div style={{fontSize:11,color:t.textMuted,marginBottom:8,textTransform:'uppercase',letterSpacing:.4}}>İade Edilen Ürünler</div>
-              <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:16}}>
-                {(secilen.kalemler||[]).map((k,i)=>(
-                  <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-                    padding:'10px 12px',background:t.hover,borderRadius:10}}>
-                    <div>
-                      <div style={{fontSize:13,color:t.text,fontWeight:500}}>{k.urunAd}</div>
-                      <div style={{fontSize:11,color:t.textMuted}}>{k.renk}{k.beden?` / ${k.beden}`:''} · {k.adet} adet</div>
-                    </div>
-                    <div style={{fontSize:13,fontWeight:600,color:t.accent}}>{para(k.toplam)}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Toplam */}
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-                padding:'12px 14px',background:t.hover,borderRadius:10,marginBottom:16}}>
-                <span style={{fontSize:13,color:t.textMuted}}>Toplam İade</span>
-                <span style={{fontSize:20,fontWeight:700,color:t.accent}}>{para(secilen.toplamIade)}</span>
-              </div>
-
-              {/* Stok durumu */}
-              <div style={{padding:'8px 12px',background:'rgba(86,204,242,.05)',border:'1px solid rgba(86,204,242,.15)',borderRadius:8,fontSize:12,color:'#56ccf2',marginBottom:16}}>
+              <Banner tone={secilen.durum === 'onaylandi' ? 'success' : secilen.durum === 'reddedildi' ? 'critical' : 'info'}>
                 {secilen.durum === 'onaylandi'
-                  ? '✓ Stok geri eklendi'
+                  ? 'Stok geri eklendi.'
                   : secilen.durum === 'reddedildi'
-                    ? '✕ Stok değişmedi'
-                    : '⏳ Onay bekliyor — stok henüz değişmedi'}
-              </div>
+                    ? 'Stok değişmedi.'
+                    : 'Onay bekliyor. Stok henüz değişmedi.'}
+              </Banner>
 
-              {/* Admin butonları */}
               {secilen.durum === 'beklemede' && rol === 'admin' && (
-                <div style={{display:'flex',gap:10}}>
-                  <button onClick={()=>onayla(secilen.id)} disabled={!!islem} style={{
-                    flex:1,padding:'11px 0',borderRadius:12,fontSize:13,fontWeight:700,
-                    background:'rgba(111,207,151,.15)',border:'1px solid rgba(111,207,151,.4)',color:'#6fcf97'}}>
-                    {islem==='onaylaniyor'?'Onaylanıyor...':'✓ İadeyi Onayla'}
-                  </button>
-                  <button onClick={()=>reddet(secilen.id)} disabled={!!islem} style={{
-                    flex:1,padding:'11px 0',borderRadius:12,fontSize:13,fontWeight:600,
-                    background:'rgba(235,87,87,.08)',border:'1px solid rgba(235,87,87,.25)',color:'#eb5757'}}>
-                    {islem==='reddediliyor'?'Reddediliyor...':'✕ Reddet'}
-                  </button>
+                <div className="vg-row" style={{ flexWrap: 'nowrap' }}>
+                  <Button variant="primary" icon={Check} onClick={()=>onayla(secilen.id)} disabled={!!islem} loading={islem==='onaylaniyor'} style={{ flex: 1 }}>
+                    {islem==='onaylaniyor'?'Onaylanıyor…':'İadeyi onayla'}
+                  </Button>
+                  <Button variant="critical-plain" icon={X} onClick={()=>reddet(secilen.id)} disabled={!!islem} loading={islem==='reddediliyor'}>
+                    {islem==='reddediliyor'?'Reddediliyor…':'Reddet'}
+                  </Button>
                 </div>
               )}
-            </div>
+            </Card>
           )}
         </div>
       )}
-    </div>
+    </Page>
   )
 }

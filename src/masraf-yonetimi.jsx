@@ -5,82 +5,68 @@ import {
   masraflariGetir, masrafOzetGetir, masrafEkle, masrafGuncelle, masrafSil,
   bankaHesaplariGetir
 } from './api'
+import { Page, PageHeader, Card, Button, IconButton, Field, Input, Select, Segmented, Tabs, Badge, Banner, Modal, StatCard, EmptyState, LoadingRows, KategoriIkon, KATEGORI_IKONLARI, alpha, onayla, toast } from './ui'
+import { Plus, Pencil, Trash2, Wallet, Banknote, CreditCard, Landmark } from 'lucide-react'
 
 const para = v => `₺${Number(v||0).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}`
 const tarihTR = iso => new Date(iso).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'})
 
-const IKONLAR = ['💰','🏠','⚡','💧','👥','🚚','📢','🔧','📦','🖥','📋','🏭','🎯','💼','🌐','📱']
-const RENKLER = ['#c9b882','#6fcf97','#56ccf2','#bb87fc','#f2c94c','#eb5757','#ff9f43','#a29bfe','#fd79a8','#00cec9']
+const IKONLAR = Object.keys(KATEGORI_IKONLARI)
+const RENKLER = ['#2e6db4','#16713f','#6d4fc2','#b4531a','#9a5b00','#c4312b','#0f766e','#a21caf','#5b6270','#1d4ed8']
+const KAYNAKLAR = { nakit: 'Nakit', kart: 'Kart', banka: 'Banka' }
 
 // ─── KATEGORİ MODAL ───────────────────────────────────────────
-function KategoriModal({ kategori, onKaydet, onKapat, t }) {
-  const bos = { ad:'', ikon:'💰', renk:'#c9b882' }
+function KategoriModal({ kategori, onKaydet, onKapat }) {
+  const bos = { ad:'', ikon:'para', renk:RENKLER[0] }
   const [form, setForm] = useState(kategori || bos)
   const [hata, setHata] = useState('')
   const [kayit, setKayit] = useState(false)
   const g = (k,v) => setForm(p=>({...p,[k]:v}))
 
   const kaydet = async () => {
-    if (!form.ad.trim()) return setHata('Kategori adı zorunlu')
+    if (!form.ad.trim()) return setHata('Kategori adı zorunlu.')
     setHata(''); setKayit(true)
     try {
       if (kategori) await masrafKategoriGuncelle(kategori.id, form)
       else          await masrafKategoriEkle(form)
+      toast.success(kategori ? 'Kategori güncellendi.' : 'Kategori eklendi.')
       onKaydet()
     } catch(e) { setHata(e.message) }
     finally { setKayit(false) }
   }
 
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:'28px 32px',width:'100%',maxWidth:420}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text}}>{kategori?'Kategori Düzenle':'Yeni Kategori'}</div>
-          <button onClick={onKapat} style={{color:t.textMuted,fontSize:20}}>✕</button>
+    <Modal title={kategori?'Kategoriyi düzenle':'Yeni kategori'} onClose={onKapat}
+      footer={<>
+        <Button variant="plain" onClick={onKapat}>Vazgeç</Button>
+        <Button variant="primary" onClick={kaydet} loading={kayit}>{kayit?'Kaydediliyor…':kategori?'Değişiklikleri kaydet':'Kategori ekle'}</Button>
+      </>}>
+      <Field label="Kategori adı" htmlFor="kat-ad">
+        <Input id="kat-ad" value={form.ad} onChange={e=>g('ad',e.target.value)} placeholder="örn. Kira, Elektrik" />
+      </Field>
+      <Field label="İkon">
+        <div className="vg-row" style={{ gap: 6 }}>
+          {IKONLAR.map(ikon=>(
+            <Button key={ikon} variant={form.ikon===ikon?'primary':'secondary'} icon={KATEGORI_IKONLARI[ikon]} aria-label={ikon} aria-pressed={form.ikon===ikon} onClick={()=>g('ikon',ikon)} />
+          ))}
         </div>
-        <div style={{display:'flex',flexDirection:'column',gap:14}}>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Kategori Adı *</div>
-            <input value={form.ad} onChange={e=>g('ad',e.target.value)} placeholder="örn. Kira, Elektrik..."
-              style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:8,textTransform:'uppercase',letterSpacing:.5}}>İkon</div>
-            <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
-              {IKONLAR.map(ikon=>(
-                <button key={ikon} onClick={()=>g('ikon',ikon)} style={{
-                  width:40,height:40,borderRadius:10,fontSize:18,
-                  background:form.ikon===ikon?t.accentBg:t.input,
-                  border:`1px solid ${form.ikon===ikon?t.accent+'55':t.border}`}}>{ikon}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:8,textTransform:'uppercase',letterSpacing:.5}}>Renk</div>
-            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-              {RENKLER.map(renk=>(
-                <button key={renk} onClick={()=>g('renk',renk)} style={{
-                  width:28,height:28,borderRadius:'50%',background:renk,
-                  border:`3px solid ${form.renk===renk?'#fff':'transparent'}`,
-                  boxShadow:form.renk===renk?`0 0 0 2px ${renk}`:'none'}}/>
-              ))}
-            </div>
-          </div>
+      </Field>
+      <Field label="Renk">
+        <div className="vg-row" style={{ gap: 8 }}>
+          {RENKLER.map(renk=>(
+            <button key={renk} type="button" aria-label={`Renk ${renk}`} aria-pressed={form.renk===renk} onClick={()=>g('renk',renk)} style={{
+              width:24,height:24,borderRadius:'50%',background:renk,border:0,cursor:'pointer',
+              boxShadow:form.renk===renk?`0 0 0 2px var(--surface), 0 0 0 4px ${renk}`:'none'}}/>
+          ))}
         </div>
-        {hata && <div style={{marginTop:12,padding:'8px 14px',background:'rgba(235,87,87,.1)',border:'1px solid rgba(235,87,87,.3)',borderRadius:8,fontSize:12,color:'#eb5757'}}>{hata}</div>}
-        <div style={{display:'flex',gap:10,marginTop:20}}>
-          <button onClick={onKapat} style={{flex:1,padding:'11px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-          <button onClick={kaydet} disabled={kayit} style={{flex:2,padding:'11px 0',borderRadius:10,background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:600}}>
-            {kayit?'Kaydediliyor...':kategori?'Güncelle':'Ekle'}
-          </button>
-        </div>
-      </div>
-    </div>
+      </Field>
+      {hata && <Banner tone="critical">{hata}</Banner>}
+    </Modal>
   )
 }
 
 // ─── MASRAF FORMU MODAL ───────────────────────────────────────
-function MasrafModal({ masraf, kategoriler, magazalar, bankaHesaplar=[], onKaydet, onKapat, t }) {
+function MasrafModal({ masraf, kategoriler, magazalar, bankaHesaplar=[], onKaydet, onKapat }) {
   const bugun = new Date().toISOString().slice(0,10)
   const bos = { kategoriId:'', magazaId:'', tutar:'', aciklama:'', faturaNo:'', tarih:bugun, odemeKaynagi:'nakit' }
   const [form, setForm] = useState(masraf ? {
@@ -93,125 +79,81 @@ function MasrafModal({ masraf, kategoriler, magazalar, bankaHesaplar=[], onKayde
   const g = (k,v) => setForm(p=>({...p,[k]:v}))
 
   const kaydet = async () => {
-    if (!form.tutar || Number(form.tutar) <= 0) return setHata('Tutar zorunlu ve sıfırdan büyük olmalı')
+    if (!form.tutar || Number(form.tutar) <= 0) return setHata('Tutar zorunlu ve sıfırdan büyük olmalı.')
     setHata(''); setKayit(true)
     try {
       if (masraf) await masrafGuncelle(masraf.id, form)
       else        await masrafEkle(form)
+      toast.success(masraf ? 'Masraf güncellendi.' : 'Masraf kaydedildi.')
       onKaydet()
     } catch(e) { setHata(e.message) }
     finally { setKayit(false) }
   }
 
-  const seciliKat = kategoriler.find(k=>k.id===form.kategoriId)
-
   return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,padding:'28px 32px',width:'100%',maxWidth:500}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:22}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text}}>{masraf?'Masraf Düzenle':'Yeni Masraf Kaydı'}</div>
-          <button onClick={onKapat} style={{color:t.textMuted,fontSize:20}}>✕</button>
+    <Modal title={masraf?'Masrafı düzenle':'Yeni masraf'} onClose={onKapat}
+      footer={<>
+        <Button variant="plain" onClick={onKapat}>Vazgeç</Button>
+        <Button variant="primary" onClick={kaydet} loading={kayit}>{kayit?'Kaydediliyor…':masraf?'Değişiklikleri kaydet':'Masrafı kaydet'}</Button>
+      </>}>
+      <Field label="Kategori">
+        <div className="vg-row" style={{ gap: 6 }}>
+          {kategoriler.map(k=>(
+            <button key={k.id} type="button" className="vg-chip" aria-pressed={form.kategoriId===k.id} onClick={()=>g('kategoriId',k.id)}>
+              <KategoriIkon ikon={k.ikon} className="vg-icon" style={{ width: 14, height: 14, color: form.kategoriId===k.id ? undefined : k.renk }} />
+              {k.ad}
+            </button>
+          ))}
+          {kategoriler.length === 0 && <span className="vg-help">Henüz kategori yok. Kategoriler sekmesinden ekleyin.</span>}
         </div>
-        <div style={{display:'flex',flexDirection:'column',gap:14}}>
-          {/* Kategori */}
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:8,textTransform:'uppercase',letterSpacing:.5}}>Kategori</div>
-            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-              {kategoriler.map(k=>(
-                <button key={k.id} onClick={()=>g('kategoriId',k.id)} style={{
-                  padding:'7px 14px',borderRadius:20,fontSize:12,
-                  background:form.kategoriId===k.id?`${k.renk}18`:t.input,
-                  border:`1px solid ${form.kategoriId===k.id?k.renk+'55':t.border}`,
-                  color:form.kategoriId===k.id?k.renk:t.textMuted,
-                  fontWeight:form.kategoriId===k.id?600:400}}>
-                  {k.ikon} {k.ad}
-                </button>
-              ))}
-            </div>
-          </div>
+      </Field>
 
-          {/* Mağaza */}
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Mağaza</div>
-            <select value={form.magazaId} onChange={e=>g('magazaId',e.target.value)}
-              style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}>
-              <option value="">Genel (Mağazaya bağlı değil)</option>
-              {magazalar.map(m=><option key={m.id} value={m.id}>{m.ad}</option>)}
-            </select>
-          </div>
+      <Field label="Mağaza" htmlFor="ms-magaza">
+        <Select id="ms-magaza" value={form.magazaId} onChange={e=>g('magazaId',e.target.value)}>
+          <option value="">Genel (mağazaya bağlı değil)</option>
+          {magazalar.map(m=><option key={m.id} value={m.id}>{m.ad}</option>)}
+        </Select>
+      </Field>
 
-          {/* Ödeme Kaynağı */}
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:8,textTransform:'uppercase',letterSpacing:.5}}>Ödeme Kaynağı</div>
-            <div style={{display:'flex',gap:8}}>
-              {[['nakit','💵 Nakit'],['kart','💳 Kart'],['banka','🏦 Banka']].map(([k,l])=>(
-                <button type="button" key={k} onClick={()=>g('odemeKaynagi',k)} style={{flex:1,padding:'8px 0',borderRadius:10,fontSize:12,
-                  background:form.odemeKaynagi===k?t.accentBg:t.input,
-                  border:`1px solid ${form.odemeKaynagi===k?t.accent+'55':t.border}`,
-                  color:form.odemeKaynagi===k?t.accent:t.textMuted,
-                  fontWeight:form.odemeKaynagi===k?600:400}}>{l}</button>
-              ))}
-            </div>
-            {form.odemeKaynagi==='banka'&&(
-              <select value={form.bankaHesapId||''} onChange={e=>g('bankaHesapId',e.target.value)}
-                style={{width:'100%',marginTop:8,padding:'9px 12px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}>
-                <option value="">Hesap seçin...</option>
-                {bankaHesaplar.map(h=><option key={h.id} value={h.id}>{h.ad} — {h.banka}</option>)}
-              </select>
-            )}
-          </div>
+      <Field label="Ödeme kaynağı">
+        <Segmented label="Ödeme kaynağı" value={form.odemeKaynagi} onChange={v=>g('odemeKaynagi',v)} className="vg-segmented--block"
+          options={Object.entries(KAYNAKLAR).map(([value,label])=>({ value, label }))} />
+        {form.odemeKaynagi==='banka'&&(
+          <Select value={form.bankaHesapId||''} onChange={e=>g('bankaHesapId',e.target.value)} aria-label="Banka hesabı" style={{ marginTop: 8 }}>
+            <option value="">Hesap seçin</option>
+            {bankaHesaplar.map(h=><option key={h.id} value={h.id}>{h.ad} · {h.banka}</option>)}
+          </Select>
+        )}
+      </Field>
 
-          {/* Tutar + Tarih */}
-          <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-            <div>
-              <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Tutar *</div>
-              <div style={{position:'relative'}}>
-                <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:t.textMuted}}>₺</span>
-                <input type="number" value={form.tutar} onChange={e=>g('tutar',e.target.value)} placeholder="0,00"
-                  style={{width:'100%',padding:'10px 14px 10px 28px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.accent,fontSize:16,fontWeight:700,outline:'none'}}/>
-              </div>
-            </div>
-            <div>
-              <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Tarih</div>
-              <input type="date" value={form.tarih} onChange={e=>g('tarih',e.target.value)}
-                style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
-            </div>
+      <div className="vg-grid-2">
+        <Field label="Tutar" htmlFor="ms-tutar">
+          <div className="vg-input-group">
+            <Input id="ms-tutar" type="number" className="vg-num" value={form.tutar} onChange={e=>g('tutar',e.target.value)} placeholder="0,00" style={{ paddingRight: 28 }} />
+            <span className="vg-input-suffix">₺</span>
           </div>
-
-          {/* Açıklama + Fatura No */}
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Açıklama</div>
-            <input value={form.aciklama} onChange={e=>g('aciklama',e.target.value)} placeholder="Masraf detayı..."
-              style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
-          </div>
-          <div>
-            <div style={{fontSize:11,color:t.textMuted,marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Fatura No</div>
-            <input value={form.faturaNo} onChange={e=>g('faturaNo',e.target.value)} placeholder="Opsiyonel..."
-              style={{width:'100%',padding:'10px 14px',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:13,outline:'none'}}/>
-          </div>
-        </div>
-
-        {hata && <div style={{marginTop:12,padding:'8px 14px',background:'rgba(235,87,87,.1)',border:'1px solid rgba(235,87,87,.3)',borderRadius:8,fontSize:12,color:'#eb5757'}}>{hata}</div>}
-
-        <div style={{display:'flex',gap:10,marginTop:20}}>
-          <button onClick={onKapat} style={{flex:1,padding:'11px 0',borderRadius:10,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-          <button onClick={kaydet} disabled={kayit} style={{flex:2,padding:'11px 0',borderRadius:10,background:'rgba(235,87,87,.12)',border:'1px solid rgba(235,87,87,.35)',color:'#eb5757',fontSize:13,fontWeight:700}}>
-            {kayit?'Kaydediliyor...':masraf?'Güncelle':'💸 Masraf Kaydet'}
-          </button>
-        </div>
+        </Field>
+        <Field label="Tarih" htmlFor="ms-tarih">
+          <Input id="ms-tarih" type="date" value={form.tarih} onChange={e=>g('tarih',e.target.value)} />
+        </Field>
       </div>
-    </div>
+
+      <Field label="Açıklama" htmlFor="ms-aciklama">
+        <Input id="ms-aciklama" value={form.aciklama} onChange={e=>g('aciklama',e.target.value)} placeholder="Masraf detayı" />
+      </Field>
+      <Field label="Fatura no" help="İsteğe bağlı" htmlFor="ms-fatura">
+        <Input id="ms-fatura" mono value={form.faturaNo} onChange={e=>g('faturaNo',e.target.value)} />
+      </Field>
+
+      {hata && <Banner tone="critical">{hata}</Banner>}
+    </Modal>
   )
 }
 
-// ─── ANA COMPONENT ────────────────────────────────────────────
-export default function MasrafYonetimi({ t }) {
-  t = t || {
-    bg:'#0c0b09', card:'rgba(255,255,255,.04)', border:'rgba(255,255,255,.08)',
-    text:'#e8e0d4', textMuted:'#666', accent:'#c9b882', accentBg:'rgba(201,184,130,.15)',
-    input:'rgba(255,255,255,.06)', hover:'rgba(255,255,255,.06)', sidebar:'#0a0908'
-  }
+const KAYNAK_IKON = { nakit: Banknote, kart: CreditCard, banka: Landmark }
 
+// ─── ANA COMPONENT ────────────────────────────────────────────
+export default function MasrafYonetimi() {
   const { magazalar: ctxMagazalar } = useVega()
   const magazalar = (ctxMagazalar||[]).filter(m=>m.tip!=='online')
 
@@ -247,222 +189,144 @@ export default function MasrafYonetimi({ t }) {
 
   useEffect(() => { yukle() }, [yil, ay, magazaFiltre])
 
-  const sil = async (id) => {
-    if (!window.confirm('Bu masraf silinsin mi?')) return
-    await masrafSil(id)
-    setMasraflar(p=>p.filter(m=>m.id!==id))
+  const sil = async (m) => {
+    if (!await onayla(`${para(m.tutar)} tutarındaki masraf kaydı silinecek.`, { title: 'Masrafı sil', confirmLabel: 'Masrafı sil' })) return
+    try {
+      await masrafSil(m.id)
+      setMasraflar(p=>p.filter(x=>x.id!==m.id))
+      toast.success('Masraf silindi.')
+    } catch (e) { toast.error(e.message) }
   }
 
-  const katSil = async (id) => {
-    if (!window.confirm('Bu kategori silinsin mi?')) return
-    await masrafKategoriSil(id)
-    setKategoriler(p=>p.filter(k=>k.id!==id))
+  const katSil = async (k) => {
+    if (!await onayla(`"${k.ad}" kategorisi silinecek.`, { title: 'Kategoriyi sil', confirmLabel: 'Kategoriyi sil' })) return
+    try {
+      await masrafKategoriSil(k.id)
+      setKategoriler(p=>p.filter(x=>x.id!==k.id))
+      toast.success('Kategori silindi.')
+    } catch (e) { toast.error(e.message) }
   }
 
   const AYLAR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık']
 
   return (
-    <div style={{minHeight:'100vh',background:t.bg,color:t.text,fontFamily:"'DM Sans',sans-serif"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
-        *{box-sizing:border-box;} button{cursor:pointer;border:none;background:none;font-family:inherit;}
-        input,select{font-family:inherit;} select option{background:#1a1814;}
-        tbody tr:hover td{background:rgba(255,255,255,.015);}
-        .vega-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-        .vega-scroll-x table{min-width:640px;}
-        .vega-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap!important;}
-        .vega-tabs button{white-space:nowrap;flex-shrink:0;}
-        @media (max-width:860px){
-          .vega-page-pad{padding-left:14px!important;padding-right:14px!important;}
-          .vega-grid-2,.vega-detail-grid{grid-template-columns:1fr!important;}
-        }
-        @media (max-width:600px){
-          .vega-header-row{flex-direction:column;align-items:stretch!important;}
-          .vega-header-actions{width:100%;}
-        }
-      `}</style>
-
-      <div className="vega-page-pad" style={{padding:'22px 28px 0'}}>
-        {/* Başlık */}
-        <div className="vega-header-row" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,flexWrap:'wrap',gap:12}}>
-          <div>
-            <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,color:t.text}}>Masraf Yönetimi</div>
-            <div style={{fontSize:13,color:t.textMuted,marginTop:4}}>
-              {AYLAR[ay-1]} {yil} · Toplam: <span style={{color:'#eb5757',fontWeight:600}}>{para(ozet?.toplamTutar||0)}</span>
-            </div>
-          </div>
-          <button className="vega-header-actions" onClick={()=>setModal('masraf')} style={{
-            padding:'10px 22px',borderRadius:12,
-            background:'rgba(235,87,87,.12)',border:'1px solid rgba(235,87,87,.35)',
-            color:'#eb5757',fontSize:13,fontWeight:700}}>
-            + Masraf Ekle
-          </button>
-        </div>
-
-        {/* Filtreler */}
-        <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
-          <select value={ay} onChange={e=>setAy(Number(e.target.value))}
-            style={{padding:'8px 14px',borderRadius:20,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:12,outline:'none'}}>
+    <Page>
+      <PageHeader title="Masraflar" subtitle={`${AYLAR[ay-1]} ${yil} · toplam ${para(ozet?.toplamTutar||0)}`}
+        actions={<Button variant="primary" icon={Plus} onClick={()=>setModal('masraf')}>Masraf ekle</Button>}>
+        <div className="vg-row">
+          <Select size="sm" value={ay} onChange={e=>setAy(Number(e.target.value))} aria-label="Ay" style={{ width: 'auto' }}>
             {AYLAR.map((a,i)=><option key={i} value={i+1}>{a}</option>)}
-          </select>
-          <select value={yil} onChange={e=>setYil(Number(e.target.value))}
-            style={{padding:'8px 14px',borderRadius:20,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:12,outline:'none'}}>
+          </Select>
+          <Select size="sm" value={yil} onChange={e=>setYil(Number(e.target.value))} aria-label="Yıl" style={{ width: 'auto' }}>
             {[2024,2025,2026,2027].map(y=><option key={y} value={y}>{y}</option>)}
-          </select>
-          <select value={magazaFiltre} onChange={e=>setMagazaFiltre(e.target.value)}
-            style={{padding:'8px 14px',borderRadius:20,background:t.input,border:`1px solid ${t.border}`,color:t.text,fontSize:12,outline:'none'}}>
-            <option value="">Tüm Mağazalar</option>
+          </Select>
+          <Select size="sm" value={magazaFiltre} onChange={e=>setMagazaFiltre(e.target.value)} aria-label="Mağaza" style={{ width: 'auto' }}>
+            <option value="">Tüm mağazalar</option>
             {magazalar.map(m=><option key={m.id} value={m.id}>{m.ad}</option>)}
-          </select>
+          </Select>
         </div>
+        <Tabs value={sekme} onChange={setSekme} items={[{ id: 'liste', label: 'Masraf listesi' }, { id: 'kategoriler', label: 'Kategoriler', count: 0 }]} />
+      </PageHeader>
 
-        {/* Sekmeler */}
-        <div className="vega-tabs" style={{display:'flex',gap:4,borderBottom:`1px solid ${t.border}`}}>
-          {[['liste','📋 Masraf Listesi'],['kategoriler','🏷 Kategoriler']].map(([k,l])=>(
-            <button key={k} onClick={()=>setSekme(k)} style={{padding:'10px 18px',borderRadius:'10px 10px 0 0',fontSize:13,
-              background:sekme===k?t.accentBg:'transparent',border:`1px solid ${sekme===k?t.accent+'44':'transparent'}`,
-              color:sekme===k?t.accent:t.textMuted}}>{l}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="vega-page-pad" style={{padding:'24px 28px 48px'}}>
-        {yukleniyor ? (
-          <div style={{padding:60,textAlign:'center',color:t.textMuted}}>⏳ Yükleniyor...</div>
-        ) : (
-          <>
-            {/* ─── LİSTE SEKMESİ ─── */}
-            {sekme==='liste' && (
-              <div className="vega-detail-grid" style={{display:'grid',gridTemplateColumns:'1fr 300px',gap:20,alignItems:'start'}}>
-                {/* Masraf tablosu */}
-                <div>
-                  {masraflar.length === 0 ? (
-                    <div style={{padding:60,textAlign:'center',color:t.textMuted,background:t.card,border:`1px solid ${t.border}`,borderRadius:14}}>
-                      Bu dönemde masraf kaydı yok
-                    </div>
-                  ) : (
-                    <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,overflow:'hidden'}}>
-                      <div className="vega-scroll-x">
-                      <table style={{width:'100%',borderCollapse:'collapse'}}>
-                        <thead>
-                          <tr style={{borderBottom:`1px solid ${t.border}`,background:t.hover}}>
-                            {['Tarih','Kategori','Mağaza','Kaynak','Açıklama','Fatura No','Tutar','İşlem'].map(h=>(
-                              <th key={h} style={{padding:'11px 14px',fontSize:10,color:t.textMuted,fontWeight:500,textAlign:'left',letterSpacing:.3}}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {masraflar.map(m=>(
-                            <tr key={m.id} style={{borderBottom:`1px solid ${t.border}`}}>
-                              <td style={{padding:'11px 14px',fontSize:11,color:t.textMuted,whiteSpace:'nowrap'}}>{tarihTR(m.tarih)}</td>
-                              <td style={{padding:'11px 14px'}}>
-                                {m.kategori ? (
-                                  <span style={{fontSize:12,padding:'3px 10px',borderRadius:20,
-                                    background:`${m.kategori.renk}18`,color:m.kategori.renk,fontWeight:500}}>
-                                    {m.kategori.ikon} {m.kategori.ad}
-                                  </span>
-                                ) : <span style={{fontSize:12,color:t.textMuted}}>—</span>}
-                              </td>
-                              <td style={{padding:'11px 14px',fontSize:12,color:t.text}}>{m.magaza?.ad||<span style={{color:t.textMuted}}>Genel</span>}</td>
-                              <td style={{padding:'11px 14px',fontSize:12,color:t.text,maxWidth:200}}>
-                                <div style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.aciklama||'—'}</div>
-                              </td>
-                              <td style={{padding:'11px 14px',fontSize:11,color:t.textMuted,fontFamily:'monospace'}}>{m.faturaNo||'—'}</td>
-                              <td style={{padding:'11px 14px',fontSize:14,fontWeight:700,color:'#eb5757'}}>{para(m.tutar)}</td>
-                              <td style={{padding:'11px 14px'}}>
-                                <div style={{display:'flex',gap:6}}>
-                                  <button onClick={()=>setModal(m)} style={{fontSize:11,padding:'4px 10px',borderRadius:7,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted}}>✎</button>
-                                  <button onClick={()=>sil(m.id)} style={{fontSize:11,padding:'4px 10px',borderRadius:7,background:'rgba(235,87,87,.06)',border:'1px solid rgba(235,87,87,.15)',color:'#eb5757'}}>✕</button>
+      {yukleniyor ? <LoadingRows /> : (
+        <>
+          {/* ─── LİSTE SEKMESİ ─── */}
+          {sekme==='liste' && (
+            <div className="vg-master-detail" style={{ gridTemplateColumns: 'minmax(0,1fr) 300px' }}>
+              {masraflar.length === 0 ? (
+                <div className="vg-card"><EmptyState icon={Wallet} title="Bu dönemde masraf kaydı yok" actions={<Button variant="primary" icon={Plus} onClick={()=>setModal('masraf')}>Masraf ekle</Button>} /></div>
+              ) : (
+                <div className="vg-table-wrap">
+                  <div className="vg-table-scroll">
+                    <table className="vg-table" style={{ minWidth: 820 }}>
+                      <thead><tr>
+                        <th>Tarih</th><th>Kategori</th><th>Mağaza</th><th>Kaynak</th><th>Açıklama</th><th>Fatura no</th><th className="is-num">Tutar</th><th></th>
+                      </tr></thead>
+                      <tbody>
+                        {masraflar.map(m=>{
+                          const KIc = KAYNAK_IKON[m.odemeKaynagi]
+                          return (
+                            <tr key={m.id}>
+                              <td className="vg-nowrap vg-muted">{tarihTR(m.tarih)}</td>
+                              <td>{m.kategori ? <Badge color={m.kategori.renk}>{m.kategori.ad}</Badge> : <span className="vg-muted">—</span>}</td>
+                              <td>{m.magaza?.ad||<span className="vg-muted">Genel</span>}</td>
+                              <td className="vg-nowrap">{KIc ? <span className="vg-row" style={{ gap: 6 }}><KIc className="vg-icon" style={{ width: 14, height: 14, color: 'var(--ink-muted)' }} />{KAYNAKLAR[m.odemeKaynagi]}</span> : '—'}</td>
+                              <td style={{ maxWidth: 220 }}><div className="vg-truncate">{m.aciklama||'—'}</div></td>
+                              <td className="vg-code vg-muted">{m.faturaNo||'—'}</td>
+                              <td className="is-num is-strong">{para(m.tutar)}</td>
+                              <td>
+                                <div className="vg-row" style={{ gap: 2, flexWrap: 'nowrap' }}>
+                                  <IconButton icon={Pencil} label="Düzenle" size="sm" onClick={()=>setModal(m)} />
+                                  <IconButton icon={Trash2} label="Sil" size="sm" variant="critical-plain" onClick={()=>sil(m)} />
                                 </div>
                               </td>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Özet paneli */}
-                <div style={{display:'flex',flexDirection:'column',gap:14}}>
-                  {/* Toplam kart */}
-                  <div style={{background:'rgba(235,87,87,.08)',border:'1px solid rgba(235,87,87,.2)',borderRadius:14,padding:18}}>
-                    <div style={{fontSize:11,color:'#eb5757',marginBottom:6,textTransform:'uppercase',letterSpacing:.5}}>Aylık Toplam Masraf</div>
-                    <div style={{fontSize:28,fontFamily:"'Playfair Display',serif",fontWeight:700,color:'#eb5757'}}>{para(ozet?.toplamTutar||0)}</div>
-                    <div style={{fontSize:12,color:t.textMuted,marginTop:4}}>{ozet?.masrafSayisi||0} kayıt</div>
-                  </div>
-
-                  {/* Kategori dağılımı */}
-                  {(ozet?.kategoriler||[]).length > 0 && (
-                    <div style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:16}}>
-                      <div style={{fontSize:11,color:t.textMuted,marginBottom:12,textTransform:'uppercase',letterSpacing:.5}}>Kategori Dağılımı</div>
-                      <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                        {ozet.kategoriler.map(k=>{
-                          const oran = ozet.toplamTutar > 0 ? (k.toplam/ozet.toplamTutar*100).toFixed(1) : 0
-                          return (
-                            <div key={k.ad}>
-                              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                                <span style={{fontSize:12,color:t.text}}>{k.ikon} {k.ad}</span>
-                                <span style={{fontSize:12,fontWeight:600,color:k.renk}}>{para(k.toplam)}</span>
-                              </div>
-                              <div style={{height:5,background:'rgba(255,255,255,.06)',borderRadius:3,overflow:'hidden'}}>
-                                <div style={{width:`${oran}%`,height:'100%',background:k.renk,borderRadius:3}}/>
-                              </div>
-                              <div style={{fontSize:10,color:t.textMuted,marginTop:2}}>%{oran} · {k.sayi} kayıt</div>
-                            </div>
                           )
                         })}
-                      </div>
-                    </div>
-                  )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* ─── KATEGORİLER SEKMESİ ─── */}
-            {sekme==='kategoriler' && (
-              <div>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
-                  <div style={{fontSize:13,color:t.textMuted}}>{kategoriler.length} kategori</div>
-                  <button onClick={()=>setKatModal('yeni')} style={{
-                    padding:'9px 20px',borderRadius:10,background:t.accentBg,
-                    border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:600}}>
-                    + Yeni Kategori
-                  </button>
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:12}}>
-                  {kategoriler.map(k=>(
-                    <div key={k.id} style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:12,padding:16,borderLeft:`3px solid ${k.renk}`}}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                        <div style={{display:'flex',alignItems:'center',gap:10}}>
-                          <div style={{width:40,height:40,borderRadius:10,background:`${k.renk}18`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>
-                            {k.ikon}
-                          </div>
-                          <div>
-                            <div style={{fontSize:14,fontWeight:600,color:t.text}}>{k.ad}</div>
-                            <div style={{fontSize:11,color:t.textMuted}}>{k._count?.masraflar||0} kayıt</div>
-                          </div>
-                        </div>
-                        <div style={{display:'flex',gap:6}}>
-                          <button onClick={()=>setKatModal(k)} style={{padding:'4px 8px',borderRadius:7,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:11}}>✎</button>
-                          <button onClick={()=>katSil(k.id)} style={{padding:'4px 8px',borderRadius:7,background:'rgba(235,87,87,.06)',border:'1px solid rgba(235,87,87,.15)',color:'#eb5757',fontSize:11}}>✕</button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              {/* Özet paneli */}
+              <div className="vg-stack">
+                <StatCard label="Aylık toplam masraf" value={para(ozet?.toplamTutar||0)} meta={`${ozet?.masrafSayisi||0} kayıt`} />
 
-                  <button onClick={()=>setKatModal('yeni')} style={{
-                    background:'transparent',border:`2px dashed ${t.border}`,borderRadius:12,
-                    padding:16,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
-                    gap:8,color:t.textMuted,fontSize:13,minHeight:80}}>
-                    <span style={{fontSize:24}}>+</span> Yeni Kategori
-                  </button>
-                </div>
+                {(ozet?.kategoriler||[]).length > 0 && (
+                  <Card title="Kategori dağılımı">
+                    <div className="vg-stack" style={{ gap: 12 }}>
+                      {ozet.kategoriler.map(k=>{
+                        const oran = ozet.toplamTutar > 0 ? (k.toplam/ozet.toplamTutar*100).toFixed(1) : 0
+                        return (
+                          <div key={k.ad}>
+                            <div className="vg-row" style={{ justifyContent: 'space-between', marginBottom: 4, flexWrap: 'nowrap', fontSize: 13 }}>
+                              <span className="vg-row" style={{ gap: 6, flexWrap: 'nowrap' }}><KategoriIkon ikon={k.ikon} style={{ width: 14, height: 14, color: k.renk }} />{k.ad}</span>
+                              <span className="vg-num" style={{ fontWeight: 600 }}>{para(k.toplam)}</span>
+                            </div>
+                            <div className="vg-progress__track"><div className="vg-progress__bar" style={{ width:`${oran}%`, background:k.renk }}/></div>
+                            <div className="vg-help" style={{ marginTop: 2 }}>%{String(oran).replace('.', ',')} · {k.sayi} kayıt</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </Card>
+                )}
               </div>
-            )}
-          </>
-        )}
-      </div>
+            </div>
+          )}
+
+          {/* ─── KATEGORİLER SEKMESİ ─── */}
+          {sekme==='kategoriler' && (
+            <>
+              <div className="vg-row" style={{ justifyContent: 'space-between' }}>
+                <span className="vg-muted" style={{ fontSize: 13 }}>{kategoriler.length} kategori</span>
+                <Button icon={Plus} onClick={()=>setKatModal('yeni')}>Kategori ekle</Button>
+              </div>
+              <div className="vg-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+                {kategoriler.map(k=>(
+                  <div key={k.id} className="vg-card" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width:40,height:40,borderRadius:10,background:alpha(k.renk || 'var(--accent)', 14),color:k.renk,display:'grid',placeItems:'center',flexShrink:0 }}>
+                      <KategoriIkon ikon={k.ikon} className="vg-icon vg-icon--lg" />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600 }} className="vg-truncate">{k.ad}</div>
+                      <div className="vg-list__secondary">{k._count?.masraflar||0} kayıt</div>
+                    </div>
+                    <IconButton icon={Pencil} label="Düzenle" size="sm" onClick={()=>setKatModal(k)} />
+                    <IconButton icon={Trash2} label="Sil" size="sm" variant="critical-plain" onClick={()=>katSil(k)} />
+                  </div>
+                ))}
+                <button type="button" onClick={()=>setKatModal('yeni')} className="vg-card vg-card--interactive" style={{
+                  border:'1px dashed var(--line-input)',boxShadow:'none',background:'transparent',minHeight:68,
+                  display:'flex',alignItems:'center',justifyContent:'center',gap:8,color:'var(--ink-muted)',font:'inherit',cursor:'pointer'}}>
+                  <Plus className="vg-icon" /> Yeni kategori
+                </button>
+              </div>
+            </>
+          )}
+        </>
+      )}
 
       {/* Masraf Modal */}
       {modal && (
@@ -471,7 +335,6 @@ export default function MasrafYonetimi({ t }) {
           kategoriler={kategoriler}
           magazalar={magazalar}
           bankaHesaplar={bankaHesaplar}
-          t={t}
           onKaydet={()=>{ setModal(null); yukle() }}
           onKapat={()=>setModal(null)}
         />
@@ -481,11 +344,10 @@ export default function MasrafYonetimi({ t }) {
       {katModal && (
         <KategoriModal
           kategori={katModal==='yeni'?null:katModal}
-          t={t}
           onKaydet={()=>{ setKatModal(null); yukle() }}
           onKapat={()=>setKatModal(null)}
         />
       )}
-    </div>
+    </Page>
   )
 }

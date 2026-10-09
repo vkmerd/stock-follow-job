@@ -1,0 +1,106 @@
+/* ─── Vega Panel · tasarım token'ları ─────────────────────────
+   Kaynak: Vega Panel Design System (tokens.json). Açık tema varsayılan,
+   koyu tema <html data-theme="dark"> ile gelir. */
+
+:root {
+  color-scheme: light;
+
+  --canvas: #f3f4f6;
+  --surface: #ffffff;
+  --surface-sunken: #f8f9fa;
+  --surface-hover: #eff1f4;
+  --chrome: #15171c;
+  --on-chrome: #eceef2;
+  --on-chrome-muted: #a1a8b3;
+  --line: #e4e7eb;
+  --line-input: #8b929d;
+  --ink: #15171c;
+  --ink-muted: #5b6270;
+  --ink-subtle: #8b929d;
+  --primary: #1c1f26;
+  --primary-hover: #30343d;
+  --on-primary: #ffffff;
+  --accent: #2e6db4;
+  --accent-soft: #e7f0fa;
+  --brand-brush: #a9cbea;
+  --focus: #2e6db4;
+  --success: #16713f;
+  --success-soft: #e3f5eb;
+  --warning: #9a5b00;
+  --warning-soft: #fdf1dc;
+  --critical: #c4312b;
+  --critical-soft: #fde8e6;
+  --critical-fill: #c4312b;
+  --on-critical: #ffffff;
+  --overlay: rgba(21, 23, 28, 0.45);
+
+  /* Ek kategori renkleri (kanal, rol, grafik serileri) */
+  --violet: #6d4fc2;
+  --violet-soft: #efeafb;
+  --orange: #b4531a;
+  --orange-soft: #fcebdf;
+
+  --shadow-card: 0 0 0 1px rgba(21, 23, 28, 0.07), 0 1px 2px rgba(21, 23, 28, 0.06);
+  --shadow-popover: 0 0 0 1px rgba(21, 23, 28, 0.08), 0 12px 32px rgba(21, 23, 28, 0.16);
+  --shadow-button: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(21, 23, 28, 0.24);
+
+  --font-sans: "Geist", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+
+  --control-sm: 28px;
+  --control-md: 34px;
+  --control-lg: 42px;
+  --topbar-height: 52px;
+  --sidebar-width: 236px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #0e1014;
+  --surface: #16191f;
+  --surface-sunken: #1b1f26;
+  --surface-hover: #222731;
+  --chrome: #08090b;
+  --line: #2a2f38;
+  --line-input: #6b7280;
+  --ink: #eceef2;
+  --ink-muted: #9ba3af;
+  --ink-subtle: #6b7280;
+  --primary: #eceef2;
+  --primary-hover: #ffffff;
+  --on-primary: #15171c;
+  --accent: #8cb8e8;
+  --accent-soft: #1a2a3d;
+  --focus: #8cb8e8;
+  --success: #5fd39a;
+  --success-soft: #12301f;
+  --warning: #f2b84b;
+  --warning-soft: #3a2a0c;
+  --critical: #ff8a80;
+  --critical-soft: #3d1614;
+  --critical-fill: #e5534b;
+  --overlay: rgba(0, 0, 0, 0.6);
+
+  --violet: #b9a4f5;
+  --violet-soft: #2a2140;
+  --orange: #f5a36c;
+  --orange-soft: #3a2012;
+
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-popover: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-button: inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+}

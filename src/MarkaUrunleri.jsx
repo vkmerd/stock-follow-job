@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { useVega } from './VegaContext'
 import { API_BASE, markaGonderilenleriGetir, markaGonderildiKaydet } from './api'
+import { Page, PageHeader, Button, IconButton, Field, Input, Select, SearchInput, Tabs, Badge, Banner, Modal, Tile, Checkbox, EmptyState, LoadingRows, Menu, MagazaIkon, onayla, toast } from './ui'
+import { RefreshCw, ArrowDownToLine, Upload, Check, TriangleAlert, MoreHorizontal, Settings2, Eye, Tag, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const API_URL = `${API_BASE}/ticimax-urunler`
 const NASBAG_API_URL = `${API_BASE}/nasbag-urunler`
@@ -13,7 +14,6 @@ const SHOPIFY_KARSILASTIRMA_CARPANI = 2.40
 const NASBAG_FIYAT_CARPANI = 2.05
 
 export default function MarkaUrunleri() {
-  const { t } = useVega()
   const [xmlRaw, setXmlRaw] = useState('')
   const [urunler, setUrunler] = useState([])
   const [loading, setLoading] = useState(false)
@@ -411,11 +411,12 @@ export default function MarkaUrunleri() {
 
   // Tüm filtrelenmiş ürünleri toplu aktar
   const topluAktar = async () => {
-    if (!seciliMagazaId) { alert('Lütfen önce bir mağaza seçin.'); return }
-    if (!window.confirm(`${filteredUrunler.length} ürün "${magazalar.find(m=>m.id===seciliMagazaId)?.ad}" mağazasına tekil stok olarak aktarılacak. Onaylıyor musunuz?`)) return
+    if (!seciliMagazaId) { toast.warning('Önce bir mağaza seçin.'); return }
+    if (!await onayla(`${filteredUrunler.length} ürün "${magazalar.find(m=>m.id===seciliMagazaId)?.ad}" mağazasına tekil stok olarak aktarılacak.`, { title: 'Toplu aktarım', confirmLabel: `${filteredUrunler.length} ürünü aktar`, tone: 'primary' })) return
     for (const urun of filteredUrunler) {
       await aktarVegaya(urun, seciliMagazaId)
     }
+    toast.success(`${filteredUrunler.length} ürün için aktarım tamamlandı.`)
   }
 
   const publishToShopify = async (urun, koleksiyonIds = []) => {
@@ -437,10 +438,11 @@ export default function MarkaUrunleri() {
       if (!res.ok) throw new Error(await res.text())
       const sonuc = await res.json().catch(() => ({}))
       gonderildiIsaretle(urun, gonderilecekFiyat, tedarikciFiyati, sonuc?.product?.id || null)
-      alert(`Ürün Shopify mağazanıza gönderildi / güncellendi (₺${tedarikciFiyati.toFixed(2)} × ${SHOPIFY_FIYAT_CARPANI} = ₺${gonderilecekFiyat.toFixed(2)}, karşılaştırmalı: ₺${karsilastirmaliFiyat.toFixed(2)})`)
+      toast.success(`Ürün Shopify mağazanıza gönderildi.
+₺${tedarikciFiyati.toFixed(2)} × ${SHOPIFY_FIYAT_CARPANI} = ₺${gonderilecekFiyat.toFixed(2)} · karşılaştırmalı ₺${karsilastirmaliFiyat.toFixed(2)}`, 6000)
     } catch (e) {
       console.error(e)
-      alert('Yayınlama hatası: ' + (e.message || e))
+      toast.error('Yayınlanamadı: ' + (e.message || e))
     } finally {
       setLoading(false)
     }
@@ -476,10 +478,11 @@ export default function MarkaUrunleri() {
       if (!res.ok) throw new Error(await res.text())
       const sonuc = await res.json().catch(() => ({}))
       nasbagGonderildiIsaretle(urun, gonderilecekFiyat, tedarikciFiyati, sonuc?.product?.id || null)
-      alert(`Ürün Shopify mağazanıza gönderildi / güncellendi (₺${tedarikciFiyati.toFixed(2)} × ${NASBAG_FIYAT_CARPANI} = ₺${gonderilecekFiyat.toFixed(2)})`)
+      toast.success(`Ürün Shopify mağazanıza gönderildi.
+₺${tedarikciFiyati.toFixed(2)} × ${NASBAG_FIYAT_CARPANI} = ₺${gonderilecekFiyat.toFixed(2)}`, 6000)
     } catch (e) {
       console.error(e)
-      alert('Yayınlama hatası: ' + (e.message || e))
+      toast.error('Yayınlanamadı: ' + (e.message || e))
     } finally {
       setNasbagPublishing(s => ({ ...s, [id]: false }))
     }
@@ -606,686 +609,359 @@ export default function MarkaUrunleri() {
 
   useEffect(() => { setNasbagPage(0) }, [nasbagSearch])
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: t.bg, color: t.text }}>
-      <style>{`
-        .vega-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-        .vega-scroll-x table{min-width:640px;}
-        .vega-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap!important;}
-        .vega-tabs button{white-space:nowrap;flex-shrink:0;}
-        @media (max-width:860px){
-          .vega-page-pad{padding-left:14px!important;padding-right:14px!important;}
-          .vega-grid-2{grid-template-columns:1fr!important;}
-        }
-        @media (max-width:600px){
-          .vega-header-row{flex-direction:column;align-items:stretch!important;}
-          .vega-header-actions{width:100%;flex-wrap:wrap!important;}
-          .vega-header-actions button{flex:1;min-width:140px;}
-        }
-      `}</style>
-      {/* Header */}
-      <div className="vega-page-pad" style={{ padding: '20px 24px', borderBottom: `1px solid ${t.border}`, flexShrink: 0 }}>
-        <div className="vega-header-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div>
-            <h1 style={{ margin: '0 0 6px 0', fontSize: 20, fontWeight: 600 }}>Marka Ürünleri</h1>
-            <p style={{ margin: 0, fontSize: 13, color: t.textMuted }}>Silver Polo ürünlerini yönetin ve detaylarını görün</p>
-            <div style={{ marginTop: 8 }}>
-              <input
-                placeholder="Ürün adı, marka, kod ara..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: 10, border: `1px solid ${t.border}`, background: t.input, color: t.text, width: '100%', maxWidth: 380 }}
-              />
-            </div>
-          </div>
-          <div className="vega-header-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              onClick={fetchUrunler}
-              disabled={loading}
-              style={{
-                padding: '10px 16px',
-                borderRadius: 10,
-                border: `1px solid ${t.accent}55`,
-                background: t.accentBg,
-                color: t.accent,
-                cursor: 'pointer',
-                fontSize: 13,
-                fontWeight: 500,
-                opacity: loading ? 0.6 : 1
-              }}
-            >
-              {loading ? 'Yükleniyor...' : '↻ Yenile'}
-            </button>
-            <button
-              onClick={topluAktar}
-              disabled={loading || filteredUrunler.length === 0}
-              style={{
-                padding: '10px 16px',
-                borderRadius: 10,
-                border: '1px solid #6fcf9755',
-                background: 'rgba(111,207,151,0.1)',
-                color: '#6fcf97',
-                cursor: 'pointer',
-                fontSize: 13,
-                fontWeight: 500,
-                opacity: loading ? 0.6 : 1
-              }}
-            >
-              ↓ Tümünü Vega'ya Aktar ({filteredUrunler.length})
-            </button>
-          </div>
-        </div>
+  const tarihSaat = iso => new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const tl = v => `₺${Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-        {/* Sekmeler */}
-        <div className="vega-tabs" style={{ display: 'flex', gap: 4, marginTop: 16 }}>
-          {[
-            ['liste', `Tüm Ürünler (${urunler.length})`],
-            ['gonderilenler', `✓ Gönderilenler (${Object.keys(gonderilenler).length})`],
-            ['nasbag', `Nas Bag (${nasbagUrunler.length})`],
-            ['nasbag-gonderilenler', `✓ Nas Bag Gönderilenler (${Object.keys(nasbagGonderilenler).length})`],
-          ].map(([id, etiket]) => (
-            <button key={id} onClick={() => setSekme(id)} style={{
-              padding: '8px 16px', borderRadius: '10px 10px 0 0', fontSize: 13,
-              background: sekme === id ? t.accentBg : 'transparent',
-              border: `1px solid ${sekme === id ? t.accent + '55' : 'transparent'}`,
-              borderBottom: sekme === id ? `1px solid ${t.bg}` : '',
-              color: sekme === id ? t.accent : t.textMuted, cursor: 'pointer'
-            }}>{etiket}</button>
-          ))}
-        </div>
+  const AktarimButonu = ({ urun }) => {
+    const durum = aktarimDurum[urun.urunKartiID]
+    const hata = durum?.startsWith('hata')
+    return (
+      <Button size="sm" icon={durum === 'tamam' || durum === 'guncellendi' ? Check : hata ? TriangleAlert : ArrowDownToLine}
+        variant={hata ? 'critical-plain' : 'secondary'}
+        title={hata ? durum : 'Vega stok yönetimine aktar'}
+        loading={durum === 'aktariliyor'}
+        onClick={() => setMagazaSecModal(urun)}>
+        {durum === 'tamam' ? 'Aktarıldı' : durum === 'guncellendi' ? 'Güncellendi' : hata ? 'Hata' : 'Vega'}
+      </Button>
+    )
+  }
+
+  const Sayfalama = ({ bas, son, toplam, sayfa, sayfaSayisi, onceki, sonraki, children }) => (
+    <div className="vg-table-footer">
+      <span className="vg-num">{toplam ? bas + 1 : 0}–{son} / {toplam}</span>
+      <div className="vg-row" style={{ gap: 6 }}>
+        <Button size="sm" icon={ChevronLeft} onClick={onceki} disabled={sayfa === 0}>Önceki</Button>
+        <span className="vg-num">{sayfa + 1} / {sayfaSayisi}</span>
+        <Button size="sm" iconRight={ChevronRight} onClick={sonraki} disabled={sayfa >= sayfaSayisi - 1}>Sonraki</Button>
+        {children}
       </div>
+    </div>
+  )
 
-      {/* Content */}
-      <div ref={containerRef} className="vega-page-pad" style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-        {sekme === 'liste' && error && (
-          <div style={{ 
-            padding: '12px 16px', 
-            borderRadius: 8, 
-            background: 'rgba(235,87,87,0.1)',
-            border: `1px solid rgba(235,87,87,0.3)`,
-            color: '#eb5757',
-            marginBottom: 16,
-            fontSize: 13
-          }}>
-            Hata: {error}
-          </div>
-        )}
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <Page style={{ paddingBottom: 0, flexShrink: 0 }}>
+        <PageHeader title="Marka ürünleri" subtitle="Silver Polo ve Nas Bag tedarikçi ürünlerini inceleyin, Vega'ya aktarın ve Shopify'da yayınlayın."
+          actions={<>
+            <Button icon={RefreshCw} onClick={sekme.startsWith('nasbag') ? fetchNasbagUrunler : fetchUrunler} loading={sekme.startsWith('nasbag') ? nasbagLoading : loading}>Yenile</Button>
+            {!sekme.startsWith('nasbag') && (
+              <Button variant="primary" icon={ArrowDownToLine} onClick={topluAktar} disabled={loading || filteredUrunler.length === 0}>
+                Tümünü Vega'ya aktar ({filteredUrunler.length})
+              </Button>
+            )}
+          </>}>
+          <Tabs value={sekme} onChange={setSekme} items={[
+            { id: 'liste', label: `Silver Polo (${urunler.length})` },
+            { id: 'gonderilenler', label: `Silver Polo gönderilenler (${Object.keys(gonderilenler).length})` },
+            { id: 'nasbag', label: `Nas Bag (${nasbagUrunler.length})` },
+            { id: 'nasbag-gonderilenler', label: `Nas Bag gönderilenler (${Object.keys(nasbagGonderilenler).length})` },
+          ]} />
+        </PageHeader>
+      </Page>
 
-        {sekme === 'liste' && !loading && !error && urunler.length > 0 && (
-          <div style={{ borderRadius: 12, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-            <div className="vega-scroll-x">
-            <table ref={tableRef} style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: t.card, borderBottom: `1px solid ${t.border}` }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>ID</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ürün Adı</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Marka</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Kategori</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Kod</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Stok</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Fiyat</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Shopify</th>
-                </tr>
-              </thead>
-              <tbody ref={tbodyRef}>
-                {currentItems.map((urun, index) => {
-                  const firstSecenek = urun.secenekler[0] || {}
-                  return (
-                    <tr 
-                      key={urun.urunKartiID || index} 
-                      onClick={() => setSelectedUrun(urun)}
-                      style={{ 
-                        borderBottom: `1px solid ${t.border}`,
-                        cursor: 'pointer',
-                        background: t.bg,
-                        transition: 'background 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = t.hover}
-                      onMouseLeave={(e) => e.currentTarget.style.background = t.bg}
-                    >
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.accent, fontWeight: 500 }}>{urun.urunKartiID}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13 }}>{urun.urunAdi}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>{urun.marka}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>{urun.kategoriTree}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>{firstSecenek.stokKodu || urun.ozelAlan1}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13 }}>{firstSecenek.stokAdedi || '-'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13 }}>
-                        {firstSecenek.indirimliFiyat ? (
-                          <>
-                            <div style={{ color: t.textMuted, textDecoration: 'line-through', fontSize: 12 }}>{firstSecenek.satisFiyati}</div>
-                            <div style={{ color: '#eb5757', fontWeight: 600 }}>{firstSecenek.indirimliFiyat}</div>
-                          </>
-                        ) : (
-                          <span style={{ color: t.accent, fontWeight: 500 }}>{firstSecenek.satisFiyati || '-'}</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13 }}>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={(e) => { e.stopPropagation(); openMappingModal(urun) }} style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${t.border}`, background: t.bg, color: t.textMuted, fontSize: 12 }}>Eşleme</button>
-                          <button onClick={(e) => { e.stopPropagation(); openKoleksiyonModal(urun) }} style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${t.accent}33`, background: t.accentBg, color: t.accent, fontSize: 12 }}>
-                            {gonderilenler[urun.urunKartiID] ? '✓ Yeniden Gönder' : 'Yayınla'}
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); syncToShopify(urun) }} style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${t.border}`, background: 'transparent', color: t.textMuted, fontSize: 12 }}>Senkron</button>
-                          {/* Vega aktarım butonu */}
-                          {(() => {
-                            const durum = aktarimDurum[urun.urunKartiID]
-                            const renk = durum === 'tamam' ? '#6fcf97'
-                              : durum === 'guncellendi' ? '#f2994a'
-                              : durum?.startsWith('hata') ? '#eb5757'
-                              : durum === 'aktariliyor' ? t.textMuted
-                              : '#6fcf97'
-                            const etiket = durum === 'tamam' ? '✓ Aktarıldı'
-                              : durum === 'guncellendi' ? '✓ Güncellendi'
-                              : durum?.startsWith('hata') ? '✕ Hata'
-                              : durum === 'aktariliyor' ? '...'
-                              : '↓ Vega'
-                            return (
-                              <button
-                                title={durum?.startsWith('hata') ? durum : 'Vega Stok Yönetimine aktar'}
-                                onClick={(e) => { e.stopPropagation(); setMagazaSecModal(urun); }}
-                                disabled={durum === 'aktariliyor'}
-                                style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${renk}55`, background: `${renk}15`, color: renk, fontSize: 12, cursor: durum === 'aktariliyor' ? 'wait' : 'pointer' }}
-                              >{etiket}</button>
-                            )
-                          })()}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+      <div ref={containerRef} className="vg-page" style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingTop: 16 }}>
+        {sekme === 'liste' && error && <Banner tone="critical">Silver Polo ürünleri alınamadı: {error}</Banner>}
+
+        {sekme === 'liste' && (
+          <div className="vg-table-wrap">
+            <div className="vg-table-toolbar">
+              <SearchInput placeholder="Ürün adı, marka, kod" aria-label="Silver Polo ürünlerinde ara" value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, minWidth: 200, maxWidth: 360 }} />
             </div>
-            {/* Pagination controls */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: `1px solid ${t.border}`, background: t.bg, flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ color: t.textMuted, fontSize: 13 }}>
-                Gösterilen {start + 1} - {end} / {total}
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button onClick={goPrev} disabled={page === 0} style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${t.border}`, background: 'transparent', color: t.textMuted }}>Önceki</button>
-                <div style={{ fontSize: 13, color: t.textMuted }}>{page + 1} / {totalPages}</div>
-                <button onClick={goNext} disabled={page >= totalPages - 1} style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${t.border}`, background: 'transparent', color: t.textMuted }}>Sonraki</button>
-                <select value={autoFit ? 'auto' : perPage} onChange={(e) => {
-                  const v = e.target.value
-                  if (v === 'auto') { setAutoFit(true); setPage(0) } else setPerPageFixed(Number(v))
-                }} style={{ padding: '6px 8px', borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text }}>
-                  <option value="auto">Ekrana Sığdır</option>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {sekme === 'liste' && !loading && !error && urunler.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: t.textMuted }}>
-            <p style={{ fontSize: 14 }}>Ürün bulunamadı</p>
+            {loading && urunler.length === 0 && <LoadingRows card={false} rows={8} />}
+            {!loading && !error && urunler.length === 0 && <EmptyState icon={Tag} title="Ürün bulunamadı" />}
+            {!error && urunler.length > 0 && (
+              <>
+                <div className="vg-table-scroll">
+                  <table ref={tableRef} className="vg-table" style={{ minWidth: 1000 }}>
+                    <thead><tr><th>ID</th><th>Ürün adı</th><th>Marka</th><th>Kategori</th><th>Kod</th><th className="is-num">Stok</th><th className="is-num">Fiyat</th><th>İşlemler</th></tr></thead>
+                    <tbody ref={tbodyRef}>
+                      {currentItems.map((urun, index) => {
+                        const firstSecenek = urun.secenekler[0] || {}
+                        const gonderildi = !!gonderilenler[urun.urunKartiID]
+                        return (
+                          <tr key={urun.urunKartiID || index} className="is-clickable" onClick={() => setSelectedUrun(urun)}>
+                            <td className="vg-code vg-muted">{urun.urunKartiID}</td>
+                            <td>
+                              <div className="is-strong">{urun.urunAdi}</div>
+                              {gonderildi && <Badge tone="success" size="sm">Shopify'da</Badge>}
+                            </td>
+                            <td className="vg-muted">{urun.marka}</td>
+                            <td className="vg-muted" style={{ maxWidth: 200 }}><div className="vg-truncate">{urun.kategoriTree}</div></td>
+                            <td className="vg-code vg-muted">{firstSecenek.stokKodu || urun.ozelAlan1}</td>
+                            <td className="is-num">{firstSecenek.stokAdedi || '—'}</td>
+                            <td className="is-num">
+                              {firstSecenek.indirimliFiyat ? (
+                                <>
+                                  <div className="vg-muted" style={{ textDecoration: 'line-through', fontSize: 12 }}>{firstSecenek.satisFiyati}</div>
+                                  <div className="is-strong vg-text-critical">{firstSecenek.indirimliFiyat}</div>
+                                </>
+                              ) : <span className="is-strong">{firstSecenek.satisFiyati || '—'}</span>}
+                            </td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <div className="vg-row" style={{ gap: 4, flexWrap: 'nowrap' }}>
+                                <Button size="sm" variant={gonderildi ? 'secondary' : 'primary'} icon={Upload} onClick={() => openKoleksiyonModal(urun)}>{gonderildi ? 'Yeniden gönder' : 'Yayınla'}</Button>
+                                <AktarimButonu urun={urun} />
+                                <Menu trigger={({ toggle }) => <IconButton icon={MoreHorizontal} label="Diğer işlemler" size="sm" onClick={toggle} />}
+                                  items={[
+                                    { text: 'Shopify eşlemesi', icon: Settings2, onClick: () => openMappingModal(urun) },
+                                    { text: 'Stoğu senkronize et', icon: RefreshCw, onClick: async () => { const ok = await syncToShopify(urun); ok ? toast.success('Stok senkronize edildi.') : toast.error('Senkronizasyon yapılamadı.') } },
+                                    { text: 'Detay', icon: Eye, onClick: () => setSelectedUrun(urun) },
+                                  ]} />
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <Sayfalama bas={start} son={end} toplam={total} sayfa={page} sayfaSayisi={totalPages} onceki={goPrev} sonraki={goNext}>
+                  <Select size="sm" value={autoFit ? 'auto' : perPage} aria-label="Sayfa başına" style={{ width: 'auto' }} onChange={(e) => {
+                    const v = e.target.value
+                    if (v === 'auto') { setAutoFit(true); setPage(0) } else setPerPageFixed(Number(v))
+                  }}>
+                    <option value="auto">Ekrana sığdır</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </Select>
+                </Sayfalama>
+              </>
+            )}
           </div>
         )}
 
         {sekme === 'gonderilenler' && (
-          Object.keys(gonderilenler).length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: t.textMuted }}>
-              <p style={{ fontSize: 14 }}>Henüz Shopify'a gönderilmiş ürün yok</p>
-            </div>
-          ) : (
-            <div style={{ borderRadius: 12, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-              <div className="vega-scroll-x">
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: t.card, borderBottom: `1px solid ${t.border}` }}>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ürün Adı</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Marka</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tedarikçi Fiyatı</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Gönderilen Fiyat (×{SHOPIFY_FIYAT_CARPANI})</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Gönderilme Tarihi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(gonderilenler)
-                    .sort((a, b) => new Date(b[1].tarih) - new Date(a[1].tarih))
-                    .map(([urunKartiID, kayit]) => (
-                      <tr key={urunKartiID} style={{ borderBottom: `1px solid ${t.border}` }}>
-                        <td style={{ padding: '12px 16px', fontSize: 13 }}>{kayit.urunAdi}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>{kayit.marka}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>₺{Number(kayit.tedarikciFiyati).toFixed(2)}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.accent, fontWeight: 500 }}>₺{Number(kayit.gonderilenFiyat).toFixed(2)}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>
-                          {new Date(kayit.tarih).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+          <div className="vg-table-wrap">
+            {Object.keys(gonderilenler).length === 0 ? (
+              <EmptyState icon={Upload} title="Henüz Shopify'a gönderilmiş ürün yok" />
+            ) : (
+              <div className="vg-table-scroll">
+                <table className="vg-table" style={{ minWidth: 760 }}>
+                  <thead><tr><th>Ürün adı</th><th>Marka</th><th className="is-num">Tedarikçi fiyatı</th><th className="is-num">Gönderilen fiyat (×{SHOPIFY_FIYAT_CARPANI})</th><th>Gönderilme tarihi</th></tr></thead>
+                  <tbody>
+                    {Object.entries(gonderilenler)
+                      .sort((a, b) => new Date(b[1].tarih) - new Date(a[1].tarih))
+                      .map(([urunKartiID, kayit]) => (
+                        <tr key={urunKartiID}>
+                          <td className="is-strong">{kayit.urunAdi}</td>
+                          <td className="vg-muted">{kayit.marka}</td>
+                          <td className="is-num vg-muted">{tl(kayit.tedarikciFiyati)}</td>
+                          <td className="is-num is-strong">{tl(kayit.gonderilenFiyat)}</td>
+                          <td className="vg-nowrap vg-muted">{tarihSaat(kayit.tarih)}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
-          )
-        )}
-
-        {sekme === 'nasbag' && nasbagError && (
-          <div style={{
-            padding: '12px 16px',
-            borderRadius: 8,
-            background: 'rgba(235,87,87,0.1)',
-            border: `1px solid rgba(235,87,87,0.3)`,
-            color: '#eb5757',
-            marginBottom: 16,
-            fontSize: 13
-          }}>
-            Hata: {nasbagError}
+            )}
           </div>
         )}
+
+        {sekme === 'nasbag' && nasbagError && <Banner tone="critical">Nas Bag ürünleri alınamadı: {nasbagError}</Banner>}
 
         {sekme === 'nasbag' && (
-          <div style={{ marginBottom: 14 }}>
-            <input
-              placeholder="Nas Bag ürünlerinde ara (başlık, stok kodu, barkod)..."
-              value={nasbagSearch}
-              onChange={(e) => setNasbagSearch(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: 10, border: `1px solid ${t.border}`, background: t.input, color: t.text, width: '100%', maxWidth: 380 }}
-            />
-          </div>
-        )}
-
-        {sekme === 'nasbag' && !nasbagLoading && !nasbagError && nasbagUrunler.length > 0 && (
-          <div style={{ borderRadius: 12, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-            <div className="vega-scroll-x">
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: t.card, borderBottom: `1px solid ${t.border}` }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Resim</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Stok Kodu</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Başlık</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Barkod</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Renk / Beden</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Stok</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Fiyat1 / 2 / 3</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Shopify</th>
-                </tr>
-              </thead>
-              <tbody>
-                {nasbagItems.map((urun, index) => (
-                  <tr key={urun.stokKod || index} style={{ borderBottom: `1px solid ${t.border}` }}>
-                    <td style={{ padding: '8px 16px' }}>
-                      {urun.resim ? (
-                        <img src={urun.resim} alt={urun.baslik} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: `1px solid ${t.border}` }} />
-                      ) : '-'}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: t.accent, fontWeight: 500 }}>
-                      {urun.stokKod}
-                      {urun.anaStokKodu && urun.anaStokKodu !== '0' && (
-                        <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 400 }}>Ana: {urun.anaStokKodu}</div>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13 }}>{urun.baslik}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>{urun.barkod}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>{urun.renk || '-'} / {urun.beden || '-'}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13 }}>{urun.stok || '0'}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>{urun.fiyat1} / {urun.fiyat2} / {urun.fiyat3} {urun.paraBirimi}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13 }}>
-                      <button
-                        onClick={() => publishNasbagToShopify(urun)}
-                        disabled={!!nasbagPublishing[urun.stokKod]}
-                        style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${t.accent}33`, background: t.accentBg, color: t.accent, fontSize: 12, cursor: nasbagPublishing[urun.stokKod] ? 'wait' : 'pointer' }}
-                      >
-                        {nasbagPublishing[urun.stokKod] ? '...' : (nasbagGonderilenler[urun.stokKod] ? '✓ Yeniden Gönder' : 'Yayınla')}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="vg-table-wrap">
+            <div className="vg-table-toolbar">
+              <SearchInput placeholder="Başlık, stok kodu, barkod" aria-label="Nas Bag ürünlerinde ara" value={nasbagSearch} onChange={(e) => setNasbagSearch(e.target.value)} style={{ flex: 1, minWidth: 200, maxWidth: 360 }} />
             </div>
-            {/* Pagination controls */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: `1px solid ${t.border}`, background: t.bg, flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ color: t.textMuted, fontSize: 13 }}>
-                Gösterilen {nasbagStart + 1} - {nasbagEnd} / {nasbagTotal}
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button onClick={() => setNasbagPage(p => Math.max(0, p - 1))} disabled={nasbagPage === 0} style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${t.border}`, background: 'transparent', color: t.textMuted }}>Önceki</button>
-                <div style={{ fontSize: 13, color: t.textMuted }}>{nasbagPage + 1} / {nasbagTotalPages}</div>
-                <button onClick={() => setNasbagPage(p => Math.min(nasbagTotalPages - 1, p + 1))} disabled={nasbagPage >= nasbagTotalPages - 1} style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${t.border}`, background: 'transparent', color: t.textMuted }}>Sonraki</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {sekme === 'nasbag' && !nasbagLoading && !nasbagError && nasbagUrunler.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: t.textMuted }}>
-            <p style={{ fontSize: 14 }}>Nas Bag ürünü bulunamadı</p>
+            {nasbagLoading && nasbagUrunler.length === 0 && <LoadingRows card={false} rows={8} />}
+            {!nasbagLoading && !nasbagError && nasbagUrunler.length === 0 && <EmptyState icon={Tag} title="Nas Bag ürünü bulunamadı" />}
+            {!nasbagError && nasbagUrunler.length > 0 && (
+              <>
+                <div className="vg-table-scroll">
+                  <table className="vg-table" style={{ minWidth: 960 }}>
+                    <thead><tr><th style={{ width: 56 }}></th><th>Stok kodu</th><th>Başlık</th><th>Barkod</th><th>Renk / beden</th><th className="is-num">Stok</th><th className="is-num">Fiyat 1 / 2 / 3</th><th></th></tr></thead>
+                    <tbody>
+                      {nasbagItems.map((urun, index) => (
+                        <tr key={urun.stokKod || index}>
+                          <td>{urun.resim ? <img src={urun.resim} alt={urun.baslik} className="vg-thumb" /> : <span className="vg-thumb" style={{ display: 'block' }} />}</td>
+                          <td>
+                            <div className="vg-code is-strong">{urun.stokKod}</div>
+                            {urun.anaStokKodu && urun.anaStokKodu !== '0' && <div className="vg-list__secondary">Ana: {urun.anaStokKodu}</div>}
+                          </td>
+                          <td>
+                            <div>{urun.baslik}</div>
+                            {nasbagGonderilenler[urun.stokKod] && <Badge tone="success" size="sm">Shopify'da</Badge>}
+                          </td>
+                          <td className="vg-code vg-muted">{urun.barkod}</td>
+                          <td className="vg-muted">{urun.renk || '—'} / {urun.beden || '—'}</td>
+                          <td className="is-num">{urun.stok || '0'}</td>
+                          <td className="is-num vg-muted vg-nowrap">{urun.fiyat1} / {urun.fiyat2} / {urun.fiyat3} {urun.paraBirimi}</td>
+                          <td>
+                            <Button size="sm" variant={nasbagGonderilenler[urun.stokKod] ? 'secondary' : 'primary'} icon={Upload}
+                              onClick={() => publishNasbagToShopify(urun)} loading={!!nasbagPublishing[urun.stokKod]}>
+                              {nasbagGonderilenler[urun.stokKod] ? 'Yeniden gönder' : 'Yayınla'}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <Sayfalama bas={nasbagStart} son={nasbagEnd} toplam={nasbagTotal} sayfa={nasbagPage} sayfaSayisi={nasbagTotalPages}
+                  onceki={() => setNasbagPage(p => Math.max(0, p - 1))} sonraki={() => setNasbagPage(p => Math.min(nasbagTotalPages - 1, p + 1))} />
+              </>
+            )}
           </div>
         )}
 
         {sekme === 'nasbag-gonderilenler' && (
-          Object.keys(nasbagGonderilenler).length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: t.textMuted }}>
-              <p style={{ fontSize: 14 }}>Henüz Shopify'a gönderilmiş Nas Bag ürünü yok</p>
-            </div>
-          ) : (
-            <div style={{ borderRadius: 12, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-              <div className="vega-scroll-x">
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: t.card, borderBottom: `1px solid ${t.border}` }}>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Başlık</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Stok Kodu</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tedarikçi Fiyatı</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Gönderilen Fiyat (×{NASBAG_FIYAT_CARPANI})</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Gönderilme Tarihi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(nasbagGonderilenler)
-                    .sort((a, b) => new Date(b[1].tarih) - new Date(a[1].tarih))
-                    .map(([stokKod, kayit]) => (
-                      <tr key={stokKod} style={{ borderBottom: `1px solid ${t.border}` }}>
-                        <td style={{ padding: '12px 16px', fontSize: 13 }}>{kayit.baslik}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>{stokKod}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>₺{Number(kayit.tedarikciFiyati).toFixed(2)}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.accent, fontWeight: 500 }}>₺{Number(kayit.gonderilenFiyat).toFixed(2)}</td>
-                        <td style={{ padding: '12px 16px', fontSize: 13, color: t.textMuted }}>
-                          {new Date(kayit.tarih).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+          <div className="vg-table-wrap">
+            {Object.keys(nasbagGonderilenler).length === 0 ? (
+              <EmptyState icon={Upload} title="Henüz Shopify'a gönderilmiş Nas Bag ürünü yok" />
+            ) : (
+              <div className="vg-table-scroll">
+                <table className="vg-table" style={{ minWidth: 760 }}>
+                  <thead><tr><th>Başlık</th><th>Stok kodu</th><th className="is-num">Tedarikçi fiyatı</th><th className="is-num">Gönderilen fiyat (×{NASBAG_FIYAT_CARPANI})</th><th>Gönderilme tarihi</th></tr></thead>
+                  <tbody>
+                    {Object.entries(nasbagGonderilenler)
+                      .sort((a, b) => new Date(b[1].tarih) - new Date(a[1].tarih))
+                      .map(([stokKod, kayit]) => (
+                        <tr key={stokKod}>
+                          <td className="is-strong">{kayit.baslik}</td>
+                          <td className="vg-code vg-muted">{stokKod}</td>
+                          <td className="is-num vg-muted">{tl(kayit.tedarikciFiyati)}</td>
+                          <td className="is-num is-strong">{tl(kayit.gonderilenFiyat)}</td>
+                          <td className="vg-nowrap vg-muted">{tarihSaat(kayit.tarih)}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
-          )
+            )}
+          </div>
         )}
       </div>
 
-      {/* Modal */}
+      {/* Ürün detayı */}
       {selectedUrun && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgb(0, 0, 0)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px'
-          }}
-          onClick={() => setSelectedUrun(null)}
-        >
-          <div 
-            style={{
-              background: t.card,
-              border: `1px solid ${t.border}`,
-              borderRadius: 12,
-              width: '100%',
-              maxWidth: 900,
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <div>
-                <h2 style={{ margin: '0 0 4px 0', fontSize: 18, fontWeight: 600 }}>{selectedUrun.urunAdi}</h2>
-                <p style={{ margin: 0, fontSize: 12, color: t.textMuted }}>Ürün ID: {selectedUrun.urunKartiID}</p>
-              </div>
-              <button 
-                onClick={() => setSelectedUrun(null)}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  border: `1px solid ${t.border}`,
-                  background: t.bg,
-                  color: t.text,
-                  fontSize: 18,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-              {/* Resimler */}
-              {selectedUrun.resimler.length > 0 && (
-                <div style={{ marginBottom: 28 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: t.accent }}>Resimler</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-                    {selectedUrun.resimler.map((r, idx) => (
-                      <img 
-                        key={idx} 
-                        src={r.url || r} 
-                        alt={selectedUrun.urunAdi} 
-                        style={{ 
-                          width: '100%', 
-                          height: 200, 
-                          objectFit: 'cover', 
-                          borderRadius: 8,
-                          border: `1px solid ${t.border}`
-                        }} 
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Bilgiler */}
-              <div className="vega-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
-                <div>
-                  <p style={{ fontSize: 11, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Marka</p>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{selectedUrun.marka} ({selectedUrun.markaID})</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: 11, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Kategori</p>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{selectedUrun.kategoriTree}</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: 11, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Satış Birimi</p>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{selectedUrun.satisBirimi || '-'}</p>
-                </div>
-                <div>
-                  <p style={{ fontSize: 11, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Durum</p>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: selectedUrun.aktif === '1' ? '#6fcf97' : '#eb5757' }}>
-                    {selectedUrun.aktif === '1' ? '✓ Aktif' : '✕ Pasif'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Seçenekler */}
-              {selectedUrun.secenekler.length > 0 && (
-                <div style={{ marginBottom: 28 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: t.accent }}>Seçenekler & Fiyatlar</h3>
-                  <div style={{ borderRadius: 8, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
-                    <div className="vega-scroll-x">
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ background: t.bg, borderBottom: `1px solid ${t.border}` }}>
-                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Stok Kodu</th>
-                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Barkod</th>
-                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Adet</th>
-                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Fiyat</th>
-                          <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>İndirimli</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedUrun.secenekler.map((sec, idx) => (
-                          <tr key={idx} style={{ borderBottom: `1px solid ${t.border}` }}>
-                            <td style={{ padding: '10px 12px', fontSize: 12 }}>{sec.stokKodu}</td>
-                            <td style={{ padding: '10px 12px', fontSize: 12, color: t.textMuted }}>{sec.barkod}</td>
-                            <td style={{ padding: '10px 12px', fontSize: 12 }}>{sec.stokAdedi}</td>
-                            <td style={{ padding: '10px 12px', fontSize: 12, fontWeight: 500 }}>{sec.satisFiyati}</td>
-                            <td style={{ padding: '10px 12px', fontSize: 12, color: t.accent, fontWeight: 500 }}>{sec.indirimliFiyat || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Teknik Detaylar */}
-              {selectedUrun.teknikDetaylar.length > 0 && (
-                <div style={{ marginBottom: 28 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: t.accent }}>Teknik Detaylar</h3>
-                  <div className="vega-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    {selectedUrun.teknikDetaylar.map((detay, idx) => (
-                      <div key={idx}>
-                        <p style={{ fontSize: 11, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{detay.ozellikTanim}</p>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>{detay.degerTanim}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Açıklama */}
-              {selectedUrun.aciklama && (
-                <div style={{ marginBottom: 28 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: t.accent }}>Açıklama</h3>
-                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: t.textMuted }}>{selectedUrun.aciklama}</p>
-                </div>
-              )}
-
-              {/* Ön Yazı */}
-              {selectedUrun.onYazi && (
-                <div>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: t.accent }}>Ön Yazı</h3>
-                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: t.textMuted }}>{selectedUrun.onYazi}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mapping Modal */}
-      {mappingModalUrun && (
-        <div style={{ position: 'fixed', top:0,left:0,right:0,bottom:0,background:'rgb(0, 0, 0)', display:'flex',alignItems:'center',justifyContent:'center',zIndex:1100 }} onClick={() => setMappingModalUrun(null)}>
-          <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 10, width: '100%', maxWidth: 640, padding: 20 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 12 }}>
-              <h3 style={{ margin:0 }}>{mappingModalUrun.urunAdi} - Shopify Eşleme</h3>
-              <button onClick={() => setMappingModalUrun(null)} style={{ border:'none', background:'transparent', fontSize:18, cursor:'pointer' }}>✕</button>
-            </div>
-            <div className="vega-grid-2" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div>
-                <label style={{ fontSize:12, color:t.textMuted }}>Başlık alanı</label>
-                <input value={mappingState.title} onChange={(e) => setMappingState(s => ({ ...s, title: e.target.value }))} style={{ width:'100%', padding:8, borderRadius:8, border:`1px solid ${t.border}`, background:t.input, color:t.text }} />
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:t.textMuted }}>Açıklama alanı</label>
-                <input value={mappingState.body} onChange={(e) => setMappingState(s => ({ ...s, body: e.target.value }))} style={{ width:'100%', padding:8, borderRadius:8, border:`1px solid ${t.border}`, background:t.input, color:t.text }} />
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:t.textMuted }}>Resimler alanı</label>
-                <input value={mappingState.images} onChange={(e) => setMappingState(s => ({ ...s, images: e.target.value }))} style={{ width:'100%', padding:8, borderRadius:8, border:`1px solid ${t.border}`, background:t.input, color:t.text }} />
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:t.textMuted }}>SKU alanı</label>
-                <input value={mappingState.sku} onChange={(e) => setMappingState(s => ({ ...s, sku: e.target.value }))} style={{ width:'100%', padding:8, borderRadius:8, border:`1px solid ${t.border}`, background:t.input, color:t.text }} />
-              </div>
-              <div>
-                <label style={{ fontSize:12, color:t.textMuted }}>Stok alanı</label>
-                <input value={mappingState.inventory} onChange={(e) => setMappingState(s => ({ ...s, inventory: e.target.value }))} style={{ width:'100%', padding:8, borderRadius:8, border:`1px solid ${t.border}`, background:t.input, color:t.text }} />
-              </div>
-            </div>
-            <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:14 }}>
-              <button onClick={() => { setMappingModalUrun(null) }} style={{ padding:'8px 12px', borderRadius:8, border:`1px solid ${t.border}`, background:'transparent', color:t.textMuted }}>İptal</button>
-              <button onClick={() => saveMapping(mappingState)} style={{ padding:'8px 12px', borderRadius:8, border:`1px solid ${t.accent}33`, background:t.accentBg, color:t.accent }}>Kaydet</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mağaza Seçim Modali */}
-      {magazaSecModal && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:'#1a1814',border:`1px solid ${t.border}`,borderRadius:16,padding:28,width:380,maxWidth:'90vw'}}>
-            <div style={{fontSize:15,fontWeight:600,color:t.text,marginBottom:6}}>Mağaza Seçin</div>
-            <div style={{fontSize:12,color:t.textMuted,marginBottom:18}}>
-              <strong style={{color:t.accent}}>{magazaSecModal.urunAdi}</strong> hangi mağazaya tekil stok olarak aktarılsın?
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
-              {magazalar.map(m => (
-                <button key={m.id} onClick={() => setSeciliMagazaId(m.id)}
-                  style={{padding:'10px 14px',borderRadius:10,textAlign:'left',cursor:'pointer',
-                    border:`1px solid ${seciliMagazaId===m.id?t.accent+'88':t.border}`,
-                    background:seciliMagazaId===m.id?t.accentBg:'transparent',
-                    color:seciliMagazaId===m.id?t.accent:t.text,fontSize:13}}>
-                  {m.ikon||'🏪'} {m.ad}
-                  {seciliMagazaId===m.id&&<span style={{float:'right',fontSize:11}}>✓ Seçili</span>}
-                </button>
+        <Modal title={selectedUrun.urunAdi} subtitle={`Ürün ID ${selectedUrun.urunKartiID}`} onClose={() => setSelectedUrun(null)} size="xl" closeOnOverlay>
+          {selectedUrun.resimler.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
+              {selectedUrun.resimler.map((r, idx) => (
+                <img key={idx} src={r.url || r} alt={selectedUrun.urunAdi} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8, boxShadow: 'inset 0 0 0 1px var(--line)' }} />
               ))}
             </div>
-            <div style={{display:'flex',gap:10}}>
-              <button onClick={()=>setMagazaSecModal(null)}
-                style={{flex:1,padding:'9px 0',borderRadius:10,border:`1px solid ${t.border}`,background:'transparent',color:t.textMuted,fontSize:13,cursor:'pointer'}}>
-                İptal
-              </button>
-              <button onClick={()=>{ if(seciliMagazaId) aktarVegaya(magazaSecModal, seciliMagazaId) }}
-                disabled={!seciliMagazaId}
-                style={{flex:2,padding:'9px 0',borderRadius:10,border:`1px solid ${t.accent}55`,
-                  background:t.accentBg,color:t.accent,fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                ↓ Aktar
-              </button>
-            </div>
+          )}
+
+          <div className="vg-grid-4" style={{ gap: 8 }}>
+            <Tile label="Marka" value={<span style={{ fontSize: 14 }}>{selectedUrun.marka} <span className="vg-muted">({selectedUrun.markaID})</span></span>} />
+            <Tile label="Kategori" value={<span style={{ fontSize: 13 }}>{selectedUrun.kategoriTree}</span>} />
+            <Tile label="Satış birimi" value={<span style={{ fontSize: 14 }}>{selectedUrun.satisBirimi || '—'}</span>} />
+            <Tile label="Durum" value={<Badge tone={selectedUrun.aktif === '1' ? 'success' : 'neutral'}>{selectedUrun.aktif === '1' ? 'Aktif' : 'Pasif'}</Badge>} />
           </div>
-        </div>
+
+          {selectedUrun.secenekler.length > 0 && (
+            <div>
+              <div className="vg-section-label" style={{ marginBottom: 6 }}>Seçenekler ve fiyatlar</div>
+              <div className="vg-table-wrap" style={{ boxShadow: 'inset 0 0 0 1px var(--line)' }}>
+                <div className="vg-table-scroll">
+                  <table className="vg-table vg-table--compact">
+                    <thead><tr><th>Stok kodu</th><th>Barkod</th><th className="is-num">Adet</th><th className="is-num">Fiyat</th><th className="is-num">İndirimli</th></tr></thead>
+                    <tbody>
+                      {selectedUrun.secenekler.map((sec, idx) => (
+                        <tr key={idx}>
+                          <td className="vg-code">{sec.stokKodu}</td>
+                          <td className="vg-code vg-muted">{sec.barkod}</td>
+                          <td className="is-num">{sec.stokAdedi}</td>
+                          <td className="is-num">{sec.satisFiyati}</td>
+                          <td className="is-num is-strong">{sec.indirimliFiyat || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedUrun.teknikDetaylar.length > 0 && (
+            <div>
+              <div className="vg-section-label" style={{ marginBottom: 6 }}>Teknik detaylar</div>
+              <div className="vg-grid-2" style={{ gap: '0 16px' }}>
+                {selectedUrun.teknikDetaylar.map((detay, idx) => (
+                  <div key={idx} className="vg-kv" style={{ borderBottom: '1px solid var(--line)' }}><span>{detay.ozellikTanim}</span><span>{detay.degerTanim}</span></div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {selectedUrun.aciklama && (
+            <div>
+              <div className="vg-section-label" style={{ marginBottom: 6 }}>Açıklama</div>
+              <p className="vg-muted" style={{ fontSize: 13, lineHeight: '20px' }}>{selectedUrun.aciklama}</p>
+            </div>
+          )}
+
+          {selectedUrun.onYazi && (
+            <div>
+              <div className="vg-section-label" style={{ marginBottom: 6 }}>Ön yazı</div>
+              <p className="vg-muted" style={{ fontSize: 13, lineHeight: '20px' }}>{selectedUrun.onYazi}</p>
+            </div>
+          )}
+        </Modal>
       )}
 
-      {/* Koleksiyon Seçim Modali */}
-      {koleksiyonModalUrun && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-          <div style={{background:'#1a1814',border:`1px solid ${t.border}`,borderRadius:16,padding:28,width:420,maxWidth:'90vw',maxHeight:'80vh',display:'flex',flexDirection:'column'}}>
-            <div style={{fontSize:15,fontWeight:600,color:t.text,marginBottom:6}}>Koleksiyon Seçin</div>
-            <div style={{fontSize:12,color:t.textMuted,marginBottom:18}}>
-              <strong style={{color:t.accent}}>{koleksiyonModalUrun.urunAdi}</strong> Shopify'da hangi koleksiyon(lar)da görünsün? Hiçbiri seçilmezse otomatik olarak ürünün kategori/alt kategori adına göre koleksiyonlanır.
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:20,overflowY:'auto',flex:1}}>
-              {koleksiyonlarYukleniyor ? (
-                <div style={{fontSize:13,color:t.textMuted,textAlign:'center',padding:20}}>Koleksiyonlar yükleniyor...</div>
-              ) : koleksiyonlar.length === 0 ? (
-                <div style={{fontSize:13,color:t.textMuted,textAlign:'center',padding:20}}>Shopify'da koleksiyon bulunamadı</div>
-              ) : koleksiyonlar.map(k => {
-                const secili = seciliKoleksiyonIds.includes(k.id)
-                return (
-                  <button key={k.id} onClick={() => koleksiyonSecimiToggle(k.id)}
-                    style={{padding:'10px 14px',borderRadius:10,textAlign:'left',cursor:'pointer',
-                      border:`1px solid ${secili?t.accent+'88':t.border}`,
-                      background:secili?t.accentBg:'transparent',
-                      color:secili?t.accent:t.text,fontSize:13}}>
-                    {k.title}
-                    {secili && <span style={{float:'right',fontSize:11}}>✓ Seçili</span>}
-                  </button>
-                )
-              })}
-            </div>
-            <div style={{display:'flex',gap:10}}>
-              <button onClick={()=>setKoleksiyonModalUrun(null)}
-                style={{flex:1,padding:'9px 0',borderRadius:10,border:`1px solid ${t.border}`,background:'transparent',color:t.textMuted,fontSize:13,cursor:'pointer'}}>
-                İptal
-              </button>
-              <button onClick={koleksiyonModalOnayla}
-                style={{flex:2,padding:'9px 0',borderRadius:10,border:`1px solid ${t.accent}55`,
-                  background:t.accentBg,color:t.accent,fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                ↑ Yayınla ({seciliKoleksiyonIds.length > 0 ? `${seciliKoleksiyonIds.length} koleksiyon` : 'otomatik'})
-              </button>
-            </div>
+      {/* Eşleme */}
+      {mappingModalUrun && (
+        <Modal title="Shopify alan eşlemesi" subtitle={mappingModalUrun.urunAdi} onClose={() => setMappingModalUrun(null)} closeOnOverlay
+          footer={<>
+            <Button variant="plain" onClick={() => setMappingModalUrun(null)}>Vazgeç</Button>
+            <Button variant="primary" onClick={() => saveMapping(mappingState)}>Eşlemeyi kaydet</Button>
+          </>}>
+          <div className="vg-grid-2">
+            {[['title', 'Başlık alanı'], ['body', 'Açıklama alanı'], ['images', 'Resimler alanı'], ['sku', 'SKU alanı'], ['inventory', 'Stok alanı']].map(([k, l]) => (
+              <Field key={k} label={l} htmlFor={`map-${k}`}>
+                <Input id={`map-${k}`} mono value={mappingState[k]} onChange={(e) => setMappingState(s => ({ ...s, [k]: e.target.value }))} />
+              </Field>
+            ))}
           </div>
-        </div>
+        </Modal>
+      )}
+
+      {/* Mağaza seçimi */}
+      {magazaSecModal && (
+        <Modal title="Mağaza seçin" onClose={() => setMagazaSecModal(null)}
+          footer={<>
+            <Button variant="plain" onClick={() => setMagazaSecModal(null)}>Vazgeç</Button>
+            <Button variant="primary" icon={ArrowDownToLine} onClick={() => { if (seciliMagazaId) aktarVegaya(magazaSecModal, seciliMagazaId) }} disabled={!seciliMagazaId}>Aktar</Button>
+          </>}>
+          <p style={{ fontSize: 13, lineHeight: '20px' }}><strong>{magazaSecModal.urunAdi}</strong> hangi mağazaya tekil stok olarak aktarılsın?</p>
+          <div className="vg-stack" style={{ gap: 6 }}>
+            {magazalar.map(m => (
+              <label key={m.id} className="vg-tile vg-check" style={{ cursor: 'pointer', boxShadow: seciliMagazaId === m.id ? 'inset 0 0 0 2px var(--accent)' : undefined }}>
+                <input type="radio" name="aktar-magaza" checked={seciliMagazaId === m.id} onChange={() => setSeciliMagazaId(m.id)} />
+                <MagazaIkon ikon={m.ikon} style={{ width: 14, height: 14 }} />{m.ad}
+              </label>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* Koleksiyon seçimi */}
+      {koleksiyonModalUrun && (
+        <Modal title="Koleksiyon seçin" onClose={() => setKoleksiyonModalUrun(null)}
+          footer={<>
+            <Button variant="plain" onClick={() => setKoleksiyonModalUrun(null)}>Vazgeç</Button>
+            <Button variant="primary" icon={Upload} onClick={koleksiyonModalOnayla}>
+              Yayınla ({seciliKoleksiyonIds.length > 0 ? `${seciliKoleksiyonIds.length} koleksiyon` : 'otomatik'})
+            </Button>
+          </>}>
+          <p style={{ fontSize: 13, lineHeight: '20px' }}>
+            <strong>{koleksiyonModalUrun.urunAdi}</strong> Shopify'da hangi koleksiyonlarda görünsün? Hiçbiri seçilmezse ürün kategori ve alt kategori adına göre otomatik koleksiyonlanır.
+          </p>
+          {koleksiyonlarYukleniyor ? <LoadingRows card={false} rows={4} /> : koleksiyonlar.length === 0 ? (
+            <EmptyState compact title="Shopify'da koleksiyon bulunamadı" />
+          ) : (
+            <div className="vg-stack" style={{ gap: 4, maxHeight: 320, overflowY: 'auto' }}>
+              {koleksiyonlar.map(k => (
+                <Checkbox key={k.id} className="vg-tile" style={{ cursor: 'pointer' }} checked={seciliKoleksiyonIds.includes(k.id)} onChange={() => koleksiyonSecimiToggle(k.id)} label={k.title} />
+              ))}
+            </div>
+          )}
+        </Modal>
       )}
     </div>
   )

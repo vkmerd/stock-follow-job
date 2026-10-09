@@ -2,27 +2,29 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import * as api from './api'
 
 // ─── TEMA ─────────────────────────────────────────────────────
+// Renkler src/styles/tokens.css içindeki CSS değişkenlerinden gelir; tema
+// <html data-theme> ile değişir, bu yüzden iki temada da aynı değerler kullanılır.
+const RENKLER = {
+  bg: 'var(--canvas)', sidebar: 'var(--surface)', card: 'var(--surface)',
+  border: 'var(--line)', text: 'var(--ink)', textMuted: 'var(--ink-muted)',
+  accent: 'var(--accent)', accentBg: 'var(--accent-soft)',
+  input: 'var(--surface)', hover: 'var(--surface-hover)',
+  success: 'var(--success)', successBg: 'var(--success-soft)',
+  warning: 'var(--warning)', warningBg: 'var(--warning-soft)',
+  critical: 'var(--critical)', criticalBg: 'var(--critical-soft)',
+  violet: 'var(--violet)', violetBg: 'var(--violet-soft)',
+}
 export const TEMALAR = {
-  karanlik: {
-    bg: '#0c0b09', sidebar: '#0a0908', card: 'rgba(255,255,255,0.04)',
-    border: 'rgba(255,255,255,0.08)', text: '#e8e0d4', textMuted: '#666',
-    accent: '#c9b882', accentBg: 'rgba(201,184,130,0.15)',
-    input: 'rgba(255,255,255,0.06)', hover: 'rgba(255,255,255,0.06)',
-  },
-  aydinlik: {
-    bg: '#f5f2ee', sidebar: '#fff', card: '#ffffff',
-    border: 'rgba(0,0,0,0.1)', text: '#2a2520', textMuted: '#888',
-    accent: '#8b6914', accentBg: 'rgba(139,105,20,0.1)',
-    input: 'rgba(0,0,0,0.06)', hover: 'rgba(0,0,0,0.04)',
-  },
+  aydinlik: { ...RENKLER, id: 'aydinlik' },
+  karanlik: { ...RENKLER, id: 'karanlik' },
 }
 
 // ─── ROL ──────────────────────────────────────────────────────
 export const ROLLER = {
-  admin:   { label: 'Admin',            renk: '#c9b882', izinler: ['hepsi'] },
-  satis:   { label: 'Satış Yetkilisi',  renk: '#6fcf97', izinler: ['satis', 'musteri', 'stok_goruntule'] },
-  kasiyer: { label: 'Kasiyer',          renk: '#56ccf2', izinler: ['satis'] },
-  depo:    { label: 'Depo Sorumlusu',   renk: '#bb87fc', izinler: ['stok_goruntule', 'stok_duzenle'] },
+  admin:   { label: 'Admin',            ton: 'info',    renk: 'var(--accent)',  izinler: ['hepsi'] },
+  satis:   { label: 'Satış Yetkilisi',  ton: 'success', renk: 'var(--success)', izinler: ['satis', 'musteri', 'stok_goruntule'] },
+  kasiyer: { label: 'Kasiyer',          ton: 'warning', renk: 'var(--warning)', izinler: ['satis'] },
+  depo:    { label: 'Depo Sorumlusu',   ton: 'violet',  renk: 'var(--violet)',  izinler: ['stok_goruntule', 'stok_duzenle'] },
 }
 
 export function izinVar(rol, izin) {
@@ -40,13 +42,24 @@ export function useVega() {
 
 // ─── PROVIDER ─────────────────────────────────────────────────
 export function VegaProvider({ children }) {
-  const [tema, setTema]             = useState('karanlik')
+  const [tema, setTema]             = useState(() => {
+    try { return localStorage.getItem('vega-tema') || 'aydinlik' } catch { return 'aydinlik' }
+  })
   const [kullanici, setKullanici]   = useState(null)   // giriş yapan kullanıcı
   const [magazalar, setMagazalar]   = useState([])
   const [aktifMagaza, setAktifMagaza] = useState('hepsi')
   const [yukleniyor, setYukleniyor] = useState(false)
 
   const t = TEMALAR[tema]
+
+  useEffect(() => {
+    const root = document.documentElement
+
+    if (tema === 'karanlik') root.dataset.theme = 'dark'
+    else delete root.dataset.theme
+
+    try { localStorage.setItem('vega-tema', tema) } catch (error) { void error }
+  }, [tema])
 
   // Giriş yap
   const girisYap = useCallback(async (email, sifre) => {
@@ -73,12 +86,12 @@ export function VegaProvider({ children }) {
 
     // Online kanalları da ekle
     const onlineKanallar = [
-      { id: 'online-instagram', ad: 'Instagram', tip: 'online', ikon: '📱', renk: '#56ccf2' },
-      { id: 'online-web', ad: 'Web Sitesi', tip: 'online', ikon: '🌐', renk: '#bb87fc' },
+      { id: 'online-instagram', ad: 'Instagram', tip: 'online', ikon: 'instagram', renk: 'var(--violet)' },
+      { id: 'online-web', ad: 'Web Sitesi', tip: 'online', ikon: 'web', renk: 'var(--accent)' },
     ]
 
     setMagazalar([
-      ...data.map(m => ({ ...m, tip: 'fiziksel', ikon: '🏪', renk: '#c9b882' })),
+      ...data.map(m => ({ ...m, tip: 'fiziksel', ikon: m.ikon || 'magaza', renk: m.renk || 'var(--ink-muted)' })),
       ...onlineKanallar,
     ])
   }, [kullanici])

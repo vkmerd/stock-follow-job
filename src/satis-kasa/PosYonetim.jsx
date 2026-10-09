@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { posTerminalleriniGetir, posTerminaliKaydet, posTerminaliGuncelle, posTerminaliSil } from '../api'
 import { BANKALAR, TAKSIT_SECENEKLERI } from './utils'
+import { Page, PageHeader, Card, Button, IconButton, Field, Input, Select, Switch, Badge, Banner, Modal, EmptyState, Menu, onayla, toast } from '../ui'
+import { Plus, Pencil, Trash2, Pause, Play, MoreHorizontal, CreditCard } from 'lucide-react'
 
-export default function PosYonetim({ terminaller, setTerminaller, magazalar, t }) {
+export default function PosYonetim({ terminaller, setTerminaller, magazalar }) {
   const bos = {
     ad:'', banka:BANKALAR[0], terminalNo:'', magazaId:'',
     komisyonPesin:1.49, komisyon2:1.79, komisyon3:1.99,
@@ -11,6 +13,7 @@ export default function PosYonetim({ terminaller, setTerminaller, magazalar, t }
   const [modal, setModal] = useState(null)
   const [form, setForm]   = useState(bos)
   const [kayit, setKayit] = useState(false)
+  const [hata, setHata]   = useState('')
 
   const set = (k,v) => setForm(f=>({...f,[k]:v}))
 
@@ -24,10 +27,11 @@ export default function PosYonetim({ terminaller, setTerminaller, magazalar, t }
   }
 
   const kaydet = async () => {
-    if(!(form.ad||'').trim()||(!(form.terminalNo||form.terminalno||'').trim())) return alert('Ad ve terminal no zorunlu.')
-    setKayit(true)
+    if(!(form.ad||'').trim()||(!(form.terminalNo||form.terminalno||'').trim())) return setHata('Terminal adı ve terminal no zorunlu.')
+    setHata(''); setKayit(true)
     try {
       // Sadece schema alanlarını gönder
+      // eslint-disable-next-line no-unused-vars
       const { magaza, _count, ...temizForm } = form
       const gonderilecek = { ...temizForm, terminalNo: temizForm.terminalNo||temizForm.terminalno||'' }
       delete gonderilecek.terminalno
@@ -35,141 +39,115 @@ export default function PosYonetim({ terminaller, setTerminaller, magazalar, t }
       else         await posTerminaliKaydet(gonderilecek)
       const guncel = await posTerminalleriniGetir({ hepsi: true })
       setTerminaller(guncel)
+      toast.success(form.id ? 'Terminal güncellendi.' : 'Terminal eklendi.')
       setModal(null)
-    } catch(err) { alert('Kayıt hatası: ' + err.message) }
+    } catch(err) { setHata('Kaydedilemedi: ' + err.message) }
     finally { setKayit(false) }
   }
 
-  const sil = async (id) => {
-    if(!window.confirm('Terminal silinsin mi?')) return
-    await posTerminaliSil(id)
-    setTerminaller(p=>p.filter(x=>x.id!==id))
+  const sil = async (terminal) => {
+    if(!await onayla(`${terminal.ad} terminali silinecek.`, { title: 'Terminali sil', confirmLabel: 'Terminali sil' })) return
+    try {
+      await posTerminaliSil(terminal.id)
+      setTerminaller(p=>p.filter(x=>x.id!==terminal.id))
+      toast.success('Terminal silindi.')
+    } catch (e) { toast.error(e.message) }
   }
 
-  const inp = { background:t.input, border:`1px solid ${t.border}`, borderRadius:8,
-    padding:'8px 12px', color:t.text, fontSize:13, fontFamily:'inherit', width:'100%', outline:'none' }
-  const lbl = { fontSize:11, color:t.textMuted, marginBottom:5, letterSpacing:.5, textTransform:'uppercase' }
+  const durumDegistir = async (terminal) => {
+    try {
+      await posTerminaliGuncelle(terminal.id,{...terminal,aktif:!terminal.aktif})
+      const g=await posTerminalleriniGetir({ hepsi: true })
+      setTerminaller(g)
+      toast.success(terminal.aktif ? 'Terminal pasif yapıldı.' : 'Terminal aktif yapıldı.')
+    } catch (e) { toast.error(e.message) }
+  }
+
+  const ac = (t) => { setHata(''); setForm(t ? {...t, terminalNo: t.terminalNo||''} : bos); setModal(t ? 'duzenle' : 'yeni') }
 
   return (
-    <div style={{padding:'24px 28px'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:22}}>
-        <div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,color:t.text}}>POS Terminal Yönetimi</div>
-          <div style={{fontSize:13,color:t.textMuted,marginTop:3}}>{terminaller.filter(x=>x.aktif).length} aktif terminal</div>
-        </div>
-        <button onClick={()=>{setForm(bos);setModal('yeni');}} style={{
-          padding:'10px 20px',borderRadius:12,background:t.accentBg,
-          border:`1px solid ${t.accent}55`,color:t.accent,fontSize:14,fontWeight:600}}>
-          + Yeni Terminal
-        </button>
-      </div>
+    <Page>
+      <PageHeader title="POS terminalleri" subtitle={`${terminaller.filter(x=>x.aktif).length} aktif terminal`}
+        actions={<Button variant="primary" icon={Plus} onClick={()=>ac(null)}>Terminal ekle</Button>} />
 
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:16}}>
-        {terminaller.map(terminal=>(
-          <div key={terminal.id} style={{background:t.card,border:`1px solid ${t.border}`,borderRadius:14,padding:20,opacity:terminal.aktif?1:.5}}>
-            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14}}>
-              <div>
-                <div style={{fontSize:15,fontWeight:600,color:t.text,marginBottom:3}}>{terminal.ad}</div>
-                <div style={{fontSize:12,color:t.textMuted}}>{terminal.banka}</div>
-                <div style={{fontSize:11,color:t.textMuted,marginTop:2}}>No: {terminal.terminalNo||terminal.terminalno}</div>
-                <div style={{fontSize:11,color:t.textMuted}}>{terminal.magaza?.ad||''}</div>
-              </div>
-              <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                <span style={{fontSize:11,padding:'3px 10px',borderRadius:20,
-                  background:terminal.aktif?'rgba(111,207,151,0.1)':t.input,
-                  color:terminal.aktif?'#6fcf97':t.textMuted}}>
-                  {terminal.aktif?'Aktif':'Pasif'}
-                </span>
-                <button onClick={async()=>{ await posTerminaliGuncelle(terminal.id,{...terminal,aktif:!terminal.aktif}); const g=await posTerminalleriniGetir({ hepsi: true }); setTerminaller(g); }} style={{
-                  padding:'5px 10px',borderRadius:8,
-                  background:terminal.aktif?'rgba(235,87,87,.08)':'rgba(111,207,151,.08)',
-                  border:`1px solid ${terminal.aktif?'rgba(235,87,87,.2)':'rgba(111,207,151,.2)'}`,
-                  color:terminal.aktif?'#eb5757':'#6fcf97',fontSize:11}}>
-                  {terminal.aktif?'Pasif Yap':'Aktif Yap'}
-                </button>
-                <button onClick={()=>{setForm({...terminal, terminalNo: terminal.terminalNo||''});setModal('duzenle');}} style={{
-                  padding:'5px 10px',borderRadius:8,background:t.input,border:`1px solid ${t.border}`,color:t.textMuted,fontSize:12}}>✎</button>
-                <button onClick={()=>sil(terminal.id)} style={{
-                  padding:'5px 10px',borderRadius:8,background:'rgba(235,87,87,.08)',border:'1px solid rgba(235,87,87,.2)',color:'#eb5757',fontSize:12}}>✕</button>
-              </div>
-            </div>
-
-            <div style={{background:t.hover,borderRadius:10,padding:'10px 12px'}}>
-              <div style={{fontSize:10,color:t.textMuted,marginBottom:8,letterSpacing:.5}}>KOMİSYON ORANLARI</div>
-              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-                {TAKSIT_SECENEKLERI.map(n=>(
-                  <div key={n} style={{textAlign:'center',background:t.card,borderRadius:8,padding:'6px 10px',minWidth:52}}>
-                    <div style={{fontSize:10,color:t.textMuted}}>{n===1?'Peşin':`${n} T`}</div>
-                    <div style={{fontSize:13,fontWeight:600,color:t.accent,marginTop:2}}>%{getKomisyon(terminal,n)}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Modal */}
-      {modal&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.8)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-          <div style={{background:t.sidebar||'#14120f',border:`1px solid ${t.border}`,borderRadius:18,width:'100%',maxWidth:580,maxHeight:'90vh',overflowY:'auto',padding:28}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:22}}>
-              <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,color:t.text}}>{modal==='yeni'?'Yeni Terminal Ekle':'Terminal Düzenle'}</div>
-              <button onClick={()=>setModal(null)} style={{color:t.textMuted,fontSize:20}}>✕</button>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:16}}>
-              <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                <div><div style={lbl}>Terminal Adı</div><input style={inp} value={form.ad} onChange={e=>set('ad',e.target.value)} placeholder="İş Bankası Merkez"/></div>
-                <div><div style={lbl}>Terminal No</div><input style={inp} value={form.terminalNo||''} onChange={e=>set('terminalNo',e.target.value)} placeholder="T-1234567"/></div>
-              </div>
-              <div className="vega-grid-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                <div>
-                  <div style={lbl}>Banka</div>
-                  <select style={inp} value={form.banka} onChange={e=>set('banka',e.target.value)}>
-                    {BANKALAR.map(b=><option key={b}>{b}</option>)}
-                  </select>
+      {terminaller.length === 0 ? (
+        <div className="vg-card"><EmptyState icon={CreditCard} title="Henüz POS terminali yok" text="Kartla ödemede komisyon hesabı için terminal ekleyin." actions={<Button variant="primary" icon={Plus} onClick={()=>ac(null)}>Terminal ekle</Button>} /></div>
+      ) : (
+        <div className="vg-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+          {terminaller.map(terminal=>(
+            <Card key={terminal.id} style={{ opacity: terminal.aktif ? 1 : .6 }} bodyClassName="vg-stack">
+              <div className="vg-row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--accent-soft)', color: 'var(--accent)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><CreditCard className="vg-icon" /></div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600 }} className="vg-truncate">{terminal.ad}</div>
+                  <div className="vg-list__secondary">{terminal.banka}{terminal.magaza?.ad ? ` · ${terminal.magaza.ad}` : ''}</div>
+                  <div className="vg-code vg-muted" style={{ marginTop: 2 }}>{terminal.terminalNo||terminal.terminalno}</div>
                 </div>
-                <div>
-                  <div style={lbl}>Mağaza</div>
-                  <select style={inp} value={form.magazaId||''} onChange={e=>set('magazaId',e.target.value)}>
-                    <option value="">Seçin...</option>
-                    {magazalar.map(m=><option key={m.id} value={m.id}>{m.ad}</option>)}
-                  </select>
-                </div>
+                <Badge tone={terminal.aktif ? 'success' : 'neutral'}>{terminal.aktif ? 'Aktif' : 'Pasif'}</Badge>
+                <Menu trigger={({ toggle }) => <IconButton icon={MoreHorizontal} label="İşlemler" size="sm" onClick={toggle} />}
+                  items={[
+                    { text: 'Düzenle', icon: Pencil, onClick: () => ac(terminal) },
+                    { text: terminal.aktif ? 'Pasif yap' : 'Aktif yap', icon: terminal.aktif ? Pause : Play, onClick: () => durumDegistir(terminal) },
+                    '-',
+                    { text: 'Sil', icon: Trash2, tone: 'critical', onClick: () => sil(terminal) },
+                  ]} />
               </div>
-
               <div>
-                <div style={lbl}>Komisyon Oranları (%)</div>
-                <div className="vega-grid-3" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+                <div className="vg-section-label" style={{ marginBottom: 6 }}>Komisyon oranları</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 4 }}>
                   {TAKSIT_SECENEKLERI.map(n=>(
-                    <div key={n}>
-                      <div style={{fontSize:11,color:t.textMuted,marginBottom:4}}>{n===1?'Peşin':`${n} Taksit`}</div>
-                      <input style={{...inp,paddingRight:28}} type="number" step="0.01" min={0} max={10}
-                        value={getKomisyon(form,n)} onChange={e=>setKomisyon(n,e.target.value)}/>
+                    <div key={n} className="vg-tile" style={{ padding: '6px 4px', textAlign: 'center' }}>
+                      <div className="vg-tile__label" style={{ fontSize: 11 }}>{n===1?'Peşin':`${n} T`}</div>
+                      <div className="vg-num" style={{ fontWeight: 600, fontSize: 13 }}>%{getKomisyon(terminal,n)}</div>
                     </div>
                   ))}
                 </div>
               </div>
-
-              <div style={{display:'flex',alignItems:'center',gap:12}}>
-                <div onClick={()=>set('aktif',!form.aktif)} style={{
-                  width:40,height:22,borderRadius:11,cursor:'pointer',position:'relative',transition:'background .2s',
-                  background:form.aktif?t.accent:t.input,border:`1px solid ${t.border}`}}>
-                  <div style={{position:'absolute',top:3,left:form.aktif?21:3,width:16,height:16,borderRadius:'50%',background:'#fff',transition:'left .2s'}}/>
-                </div>
-                <span style={{fontSize:13,color:form.aktif?'#6fcf97':t.textMuted}}>{form.aktif?'Aktif':'Pasif'}</span>
-              </div>
-
-              <div style={{display:'flex',gap:12,marginTop:6}}>
-                <button onClick={()=>setModal(null)} style={{flex:1,padding:'10px 0',borderRadius:10,background:'transparent',border:`1px solid ${t.border}`,color:t.textMuted,fontSize:13}}>İptal</button>
-                <button onClick={kaydet} disabled={kayit} style={{flex:2,padding:'10px 0',borderRadius:10,background:t.accentBg,border:`1px solid ${t.accent}55`,color:t.accent,fontSize:13,fontWeight:600}}>
-                  {kayit?'Kaydediliyor...':'✓ Kaydet'}
-                </button>
-              </div>
-            </div>
-          </div>
+            </Card>
+          ))}
         </div>
       )}
-    </div>
+
+      {modal&&(
+        <Modal title={modal==='yeni'?'Yeni terminal':'Terminali düzenle'} onClose={()=>setModal(null)}
+          footer={<>
+            <Button variant="plain" onClick={()=>setModal(null)}>Vazgeç</Button>
+            <Button variant="primary" onClick={kaydet} loading={kayit}>{kayit?'Kaydediliyor…':modal==='yeni'?'Terminal ekle':'Değişiklikleri kaydet'}</Button>
+          </>}>
+          <div className="vg-grid-2">
+            <Field label="Terminal adı" htmlFor="pt-ad"><Input id="pt-ad" value={form.ad} onChange={e=>set('ad',e.target.value)} placeholder="İş Bankası Merkez" /></Field>
+            <Field label="Terminal no" htmlFor="pt-no"><Input id="pt-no" mono value={form.terminalNo||''} onChange={e=>set('terminalNo',e.target.value)} placeholder="T-1234567" /></Field>
+          </div>
+          <div className="vg-grid-2">
+            <Field label="Banka" htmlFor="pt-banka">
+              <Select id="pt-banka" value={form.banka} onChange={e=>set('banka',e.target.value)}>
+                {BANKALAR.map(b=><option key={b}>{b}</option>)}
+              </Select>
+            </Field>
+            <Field label="Mağaza" htmlFor="pt-magaza">
+              <Select id="pt-magaza" value={form.magazaId||''} onChange={e=>set('magazaId',e.target.value)}>
+                <option value="">Seçin</option>
+                {magazalar.map(m=><option key={m.id} value={m.id}>{m.ad}</option>)}
+              </Select>
+            </Field>
+          </div>
+          <Field label="Komisyon oranları">
+            <div className="vg-grid-3" style={{ gap: 8 }}>
+              {TAKSIT_SECENEKLERI.map(n=>(
+                <div key={n} className="vg-field">
+                  <span className="vg-help">{n===1?'Peşin':`${n} taksit`}</span>
+                  <div className="vg-input-group">
+                    <Input type="number" step="0.01" min={0} max={10} className="vg-num" value={getKomisyon(form,n)} onChange={e=>setKomisyon(n,e.target.value)} aria-label={`${n===1?'Peşin':`${n} taksit`} komisyon oranı`} style={{ paddingRight: 26 }} />
+                    <span className="vg-input-suffix">%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Field>
+          <Switch checked={!!form.aktif} onChange={()=>set('aktif',!form.aktif)} label={form.aktif ? 'Terminal aktif' : 'Terminal pasif'} />
+          {hata && <Banner tone="critical">{hata}</Banner>}
+        </Modal>
+      )}
+    </Page>
   )
 }
